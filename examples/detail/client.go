@@ -4,19 +4,19 @@ import (
 	"encoding/json"
 	"time"
 
-	tp "github.com/henrylee2cn/teleport"
-	"github.com/henrylee2cn/teleport/xfer/gzip"
+	"github.com/henrylee2cn/erpc/v6"
+	"github.com/henrylee2cn/erpc/v6/xfer/gzip"
 )
 
 //go:generate go build $GOFILE
 
 func main() {
-	defer tp.FlushLogger()
+	defer erpc.FlushLogger()
 	gzip.Reg('g', "gizp", 5)
 
-	go tp.GraceSignal()
-	tp.SetShutdown(time.Second*20, nil, nil)
-	var peer = tp.NewPeer(tp.PeerConfig{
+	go erpc.GraceSignal()
+	erpc.SetShutdown(time.Second*20, nil, nil)
+	var peer = erpc.NewPeer(erpc.PeerConfig{
 		SlowCometDuration: time.Millisecond * 500,
 		// DefaultBodyCodec:    "json",
 		// DefaultContextAge: time.Second * 5,
@@ -28,38 +28,38 @@ func main() {
 	defer peer.Close()
 	peer.RoutePush(new(Push))
 
-	var sess, rerr = peer.Dial("127.0.0.1:9090")
-	if rerr != nil {
-		tp.Fatalf("%v", rerr)
+	var sess, stat = peer.Dial("127.0.0.1:9090")
+	if !stat.OK() {
+		erpc.Fatalf("%v", stat)
 	}
 	sess.SetID("testId")
 
 	var result interface{}
 	for {
-		if rerr = sess.Call(
+		if stat = sess.Call(
 			"/group/home/test",
 			map[string]interface{}{
 				"bytes": []byte("test bytes"),
 			},
 			&result,
-			tp.WithBodyCodec('j'),
-			tp.WithAcceptBodyCodec('j'),
-			tp.WithXferPipe('g'),
-			tp.WithSetMeta("peer_id", "call-1"),
-			tp.WithAddMeta("add", "1"),
-			tp.WithAddMeta("add", "2"),
-		).Rerror(); rerr != nil {
-			tp.Errorf("call error: %v", rerr)
+			erpc.WithBodyCodec('j'),
+			erpc.WithAcceptBodyCodec('j'),
+			erpc.WithXferPipe('g'),
+			erpc.WithSetMeta("peer_id", "call-1"),
+			erpc.WithAddMeta("add", "1"),
+			erpc.WithAddMeta("add", "2"),
+		).Status(); !stat.OK() {
+			erpc.Errorf("call error: %v", stat)
 			time.Sleep(time.Second * 2)
 		} else {
 			break
 		}
 	}
-	tp.Infof("test: %#v", result)
+	erpc.Infof("test: %#v", result)
 
 	// sess.Close()
 
-	rerr = sess.Call(
+	stat = sess.Call(
 		"/group/home/test_unknown",
 		struct {
 			RawMessage json.RawMessage
@@ -69,24 +69,24 @@ func main() {
 			[]byte("test bytes"),
 		},
 		&result,
-		tp.WithXferPipe('g'),
-	).Rerror()
-	if tp.IsConnRerror(rerr) {
-		tp.Fatalf("has conn rerror: %v", rerr)
+		erpc.WithXferPipe('g'),
+	).Status()
+	if erpc.IsConnError(stat) {
+		erpc.Fatalf("has conn error: %v", stat)
 	}
-	if rerr != nil {
-		tp.Fatalf("call error: %v", rerr)
+	if !stat.OK() {
+		erpc.Fatalf("call error: %v", stat)
 	}
-	tp.Infof("test_unknown: %#v", result)
+	erpc.Infof("test_unknown: %#v", result)
 }
 
 // Push controller
 type Push struct {
-	tp.PushCtx
+	erpc.PushCtx
 }
 
 // Test handler
-func (p *Push) Test(arg *map[string]interface{}) *tp.Rerror {
-	tp.Infof("receive push(%s):\narg: %#v\n", p.IP(), arg)
+func (p *Push) Test(arg *map[string]interface{}) *erpc.Status {
+	erpc.Infof("receive push(%s):\narg: %#v\n", p.IP(), arg)
 	return nil
 }

@@ -1,58 +1,54 @@
-package tps
+package erpcs
 
 import (
 	"testing"
 	"time"
 
-	tp "github.com/henrylee2cn/teleport"
+	"github.com/henrylee2cn/erpc/v6"
 )
 
 type Call struct {
-	tp.CallCtx
+	erpc.CallCtx
 }
 
-func (*Call) Test(*struct{}) (*struct{}, *tp.Rerror) {
+func (*Call) Test(*struct{}) (*struct{}, *erpc.Status) {
 	return nil, nil
 }
 
 type Push struct {
-	tp.PushCtx
+	erpc.PushCtx
 }
 
-func (*Push) Test(*struct{}) *tp.Rerror {
+func (*Push) Test(*struct{}) *erpc.Status {
 	return nil
 }
 
 func TestTPS(t *testing.T) {
-	tp.SetLoggerLevel("OFF")
+	erpc.SetLoggerLevel("OFF")
 	// Server
-	srv := tp.NewPeer(tp.PeerConfig{ListenPort: 9090}, NewTPS(5))
+	srv := erpc.NewPeer(erpc.PeerConfig{ListenPort: 9090}, NewTPS(5))
 	srv.RouteCall(new(Call))
 	srv.RoutePush(new(Push))
 	go srv.ListenAndServe()
 	time.Sleep(1e9)
 
 	// Client
-	cli := tp.NewPeer(tp.PeerConfig{})
-	sess, err := cli.Dial(":9090")
-	if err != nil {
-		if err != nil {
-			t.Error(err)
-		}
+	cli := erpc.NewPeer(erpc.PeerConfig{})
+	sess, stat := cli.Dial(":9090")
+	if !stat.OK() {
+		t.Fatal(stat)
 	}
-	var (
-		rerr   *tp.Rerror
-		ticker = time.NewTicker(time.Millisecond * 10)
-	)
+
+	ticker := time.NewTicker(time.Millisecond * 10)
 	for i := 0; i < 1<<10; i++ {
 		<-ticker.C
-		rerr = sess.Call("/call/test", nil, nil).Rerror()
-		if rerr != nil {
-			t.Error(rerr)
+		stat = sess.Call("/call/test", nil, nil).Status()
+		if !stat.OK() {
+			t.Fatal(stat)
 		}
-		rerr = sess.Push("/push/test", nil)
-		if rerr != nil {
-			t.Error(rerr)
+		stat = sess.Push("/push/test", nil)
+		if !stat.OK() {
+			t.Fatal(stat)
 		}
 	}
 }

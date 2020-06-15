@@ -4,21 +4,21 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/henrylee2cn/teleport/xfer/gzip"
+	"github.com/henrylee2cn/erpc/v6/xfer/gzip"
 
-	tp "github.com/henrylee2cn/teleport"
+	"github.com/henrylee2cn/erpc/v6"
 )
 
 //go:generate go build $GOFILE
 
 func main() {
-	defer tp.FlushLogger()
+	defer erpc.FlushLogger()
 	gzip.Reg('g', "gizp", 5)
 
-	go tp.GraceSignal()
-	// tp.SetReadLimit(10)
-	tp.SetShutdown(time.Second*20, nil, nil)
-	var peer = tp.NewPeer(tp.PeerConfig{
+	go erpc.GraceSignal()
+	// erpc.SetReadLimit(10)
+	erpc.SetShutdown(time.Second*20, nil, nil)
+	var peer = erpc.NewPeer(erpc.PeerConfig{
 		SlowCometDuration: time.Millisecond * 500,
 		PrintDetail:       true,
 		CountTime:         true,
@@ -28,21 +28,20 @@ func main() {
 	group.RouteCall(new(Home))
 	peer.SetUnknownCall(UnknownCallHandle)
 	peer.ListenAndServe()
-	select {}
 }
 
 // Home controller
 type Home struct {
-	tp.CallCtx
+	erpc.CallCtx
 }
 
 // Test handler
-func (h *Home) Test(arg *map[string]interface{}) (map[string]interface{}, *tp.Rerror) {
+func (h *Home) Test(arg *map[string]interface{}) (map[string]interface{}, *erpc.Status) {
 	h.Session().Push("/push/test", map[string]interface{}{
 		"your_id": string(h.PeekMeta("peer_id")),
 	})
 	h.VisitMeta(func(k, v []byte) {
-		tp.Infof("meta: key: %s, value: %s", k, v)
+		erpc.Infof("meta: key: %s, value: %s", k, v)
 	})
 	time.Sleep(5e9)
 	return map[string]interface{}{
@@ -52,7 +51,7 @@ func (h *Home) Test(arg *map[string]interface{}) (map[string]interface{}, *tp.Re
 }
 
 // UnknownCallHandle handles unknown call message
-func UnknownCallHandle(ctx tp.UnknownCallCtx) (interface{}, *tp.Rerror) {
+func UnknownCallHandle(ctx erpc.UnknownCallCtx) (interface{}, *erpc.Status) {
 	time.Sleep(1)
 	var v = struct {
 		RawMessage json.RawMessage
@@ -60,9 +59,9 @@ func UnknownCallHandle(ctx tp.UnknownCallCtx) (interface{}, *tp.Rerror) {
 	}{}
 	codecID, err := ctx.Bind(&v)
 	if err != nil {
-		return nil, tp.NewRerror(1001, "bind error", err.Error())
+		return nil, erpc.NewStatus(1001, "bind error", err.Error())
 	}
-	tp.Debugf("UnknownCallHandle: codec: %d, RawMessage: %s, bytes: %s",
+	erpc.Debugf("UnknownCallHandle: codec: %d, RawMessage: %s, bytes: %s",
 		codecID, v.RawMessage, v.Bytes,
 	)
 	ctx.Session().Push("/push/test", map[string]interface{}{

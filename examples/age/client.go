@@ -4,26 +4,25 @@ import (
 	"context"
 	"time"
 
-	tp "github.com/henrylee2cn/teleport"
+	"github.com/henrylee2cn/erpc/v6"
 )
 
 //go:generate go build $GOFILE
 
 func main() {
-	defer tp.FlushLogger()
-	tp.SetLoggerLevel("INFO")
-	cli := tp.NewPeer(tp.PeerConfig{PrintDetail: true})
-	sess, err := cli.Dial(":9090")
-	if err != nil {
-		tp.Fatalf("%v", err)
+	defer erpc.SetLoggerLevel("INFO")()
+	cli := erpc.NewPeer(erpc.PeerConfig{PrintDetail: true})
+	sess, stat := cli.Dial(":9090")
+	if !stat.OK() {
+		erpc.Fatalf("%v", stat)
 	}
 
 	var result string
 	sess.Call("/test/ok", "test1", &result)
-	tp.Infof("test sync1: %v", result)
+	erpc.Infof("test sync1: %v", result)
 	result = ""
-	rerr := sess.Call("/test/timeout", "test2", &result).Rerror()
-	tp.Infof("test sync2: server context timeout: %v", rerr)
+	stat = sess.Call("/test/timeout", "test2", &result).Status()
+	erpc.Infof("test sync2: server context timeout: %v", stat)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 
@@ -32,30 +31,30 @@ func main() {
 		"/test/timeout",
 		"test3",
 		&result,
-		make(chan tp.CallCmd, 1),
-		tp.WithContext(ctx),
+		make(chan erpc.CallCmd, 1),
+		erpc.WithContext(ctx),
 	)
 	select {
 	case <-callCmd.Done():
 		cancel()
-		tp.Infof("test async1: %v", result)
+		erpc.Infof("test async1: %v", result)
 	case <-ctx.Done():
-		tp.Warnf("test async1: client context timeout: %v", ctx.Err())
+		erpc.Warnf("test async1: client context timeout: %v", ctx.Err())
 	}
 
 	time.Sleep(time.Second * 6)
 	result = ""
-	rerr = sess.Call("/test/ok", "test4", &result).Rerror()
-	tp.Warnf("test sync3: disconnect due to server session timeout: %v", rerr.ToError())
+	stat = sess.Call("/test/ok", "test4", &result).Status()
+	erpc.Warnf("test sync3: disconnect due to server session timeout: %v", stat.Cause())
 
-	sess, err = cli.Dial(":9090")
-	if err != nil {
-		tp.Fatalf("%v", err)
+	sess, stat = cli.Dial(":9090")
+	if !stat.OK() {
+		erpc.Fatalf("%v", stat)
 	}
 	sess.AsyncCall(
 		"/test/break",
 		nil,
 		nil,
-		make(chan tp.CallCmd, 1),
+		make(chan erpc.CallCmd, 1),
 	)
 }

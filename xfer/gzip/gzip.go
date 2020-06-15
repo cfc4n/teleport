@@ -21,13 +21,21 @@ import (
 	"io/ioutil"
 	"sync"
 
-	"github.com/henrylee2cn/teleport/utils"
-	"github.com/henrylee2cn/teleport/xfer"
+	"github.com/henrylee2cn/erpc/v6/utils"
+	"github.com/henrylee2cn/erpc/v6/xfer"
 )
+
+var ids = map[byte]bool{}
 
 // Reg registers a gzip filter for transfer.
 func Reg(id byte, name string, level int) {
 	xfer.Reg(newGzip(id, name, level))
+	ids[id] = true
+}
+
+// Is determines if the id is gzip.
+func Is(id byte) bool {
+	return ids[id]
 }
 
 // newGzip creates a new gizp filter.
@@ -74,16 +82,13 @@ func (g *Gzip) Name() string {
 
 // OnPack performs filtering on packing.
 func (g *Gzip) OnPack(src []byte) ([]byte, error) {
-	gw := g.wPool.Get().(*gzip.Writer)
-	defer g.wPool.Put(gw)
 	bb := utils.AcquireByteBuffer()
+	gw := g.wPool.Get().(*gzip.Writer)
 	gw.Reset(bb)
-	_, err := gw.Write(src)
-	if err != nil {
-		utils.ReleaseByteBuffer(bb)
-		return nil, err
-	}
-	err = gw.Flush()
+	gw.Write(src)
+	err := gw.Close()
+	gw.Reset(nil)
+	g.wPool.Put(gw)
 	if err != nil {
 		utils.ReleaseByteBuffer(bb)
 		return nil, err
@@ -92,16 +97,16 @@ func (g *Gzip) OnPack(src []byte) ([]byte, error) {
 }
 
 // OnUnpack performs filtering on unpacking.
-func (g *Gzip) OnUnpack(src []byte) ([]byte, error) {
+func (g *Gzip) OnUnpack(src []byte) (dest []byte, err error) {
 	if len(src) == 0 {
 		return src, nil
 	}
 	gr := g.rPool.Get().(*gzip.Reader)
-	defer g.rPool.Put(gr)
-	err := gr.Reset(bytes.NewReader(src))
-	if err != nil {
-		return nil, err
+	err = gr.Reset(bytes.NewReader(src))
+	if err == nil {
+		dest, err = ioutil.ReadAll(gr)
 	}
-	dest, _ := ioutil.ReadAll(gr)
-	return dest, nil
+	gr.Close()
+	g.rPool.Put(gr)
+	return dest, err
 }

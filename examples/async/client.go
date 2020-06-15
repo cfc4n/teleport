@@ -4,19 +4,18 @@ import (
 	"fmt"
 	"time"
 
-	tp "github.com/henrylee2cn/teleport"
+	"github.com/henrylee2cn/erpc/v6"
 )
 
 //go:generate go build $GOFILE
 
 func main() {
-	defer tp.FlushLogger()
-	tp.SetLoggerLevel("INFO")
-	cli := tp.NewPeer(tp.PeerConfig{})
+	defer erpc.SetLoggerLevel("INFO")()
+	cli := erpc.NewPeer(erpc.PeerConfig{})
 	defer cli.Close()
-	sess, err := cli.Dial(":9090")
-	if err != nil {
-		tp.Fatalf("%v", err)
+	sess, stat := cli.Dial(":9090")
+	if !stat.OK() {
+		erpc.Fatalf("%v", stat)
 	}
 
 	// Single asynchronous call
@@ -25,23 +24,23 @@ func main() {
 		"/test/wait3s",
 		"Single asynchronous call",
 		&result,
-		make(chan tp.CallCmd, 1),
+		make(chan erpc.CallCmd, 1),
 	)
 WAIT:
 	for {
 		select {
 		case <-callCmd.Done():
-			tp.Infof("test 1: result: %#v, error: %v", result, callCmd.Rerror())
+			erpc.Infof("test 1: result: %#v, error: %v", result, callCmd.Status())
 			break WAIT
 		default:
-			tp.Warnf("test 1: Not yet returned to the result, try again later...")
+			erpc.Warnf("test 1: Not yet returned to the result, try again later...")
 			time.Sleep(time.Second)
 		}
 	}
 
 	// Batch asynchronous call
 	batch := 10
-	callCmdChan := make(chan tp.CallCmd, batch)
+	callCmdChan := make(chan erpc.CallCmd, batch)
 	for i := 0; i < batch; i++ {
 		sess.AsyncCall(
 			"/test/wait3s",
@@ -51,11 +50,11 @@ WAIT:
 		)
 	}
 	for callCmd := range callCmdChan {
-		result, rerr := callCmd.Reply()
-		if rerr != nil {
-			tp.Errorf("test 2: error: %v", rerr)
+		result, stat := callCmd.Reply()
+		if !stat.OK() {
+			erpc.Errorf("test 2: error: %v", stat)
 		} else {
-			tp.Infof("test 2: result: %v", *result.(*string))
+			erpc.Infof("test 2: result: %v", *result.(*string))
 		}
 		batch--
 		if batch == 0 {

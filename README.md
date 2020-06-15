@@ -1,14 +1,92 @@
-# Teleport [![GitHub release](https://img.shields.io/github/release/henrylee2cn/teleport.svg?style=flat-square)](https://github.com/henrylee2cn/teleport/releases) [![report card](https://goreportcard.com/badge/github.com/henrylee2cn/teleport?style=flat-square)](http://goreportcard.com/report/henrylee2cn/teleport) [![github issues](https://img.shields.io/github/issues/henrylee2cn/teleport.svg?style=flat-square)](https://github.com/henrylee2cn/teleport/issues?q=is%3Aopen+is%3Aissue) [![github closed issues](https://img.shields.io/github/issues-closed-raw/henrylee2cn/teleport.svg?style=flat-square)](https://github.com/henrylee2cn/teleport/issues?q=is%3Aissue+is%3Aclosed) [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](http://godoc.org/github.com/henrylee2cn/teleport) [![view examples](https://img.shields.io/badge/learn%20by-examples-00BCD4.svg?style=flat-square)](https://github.com/henrylee2cn/teleport/tree/v5/examples)
+# eRPC [![GitHub release](https://img.shields.io/github/release/henrylee2cn/erpc.svg?style=flat-square)](https://github.com/henrylee2cn/erpc/releases) [![report card](https://goreportcard.com/badge/github.com/henrylee2cn/erpc?style=flat-square)](http://goreportcard.com/report/henrylee2cn/erpc) [![github issues](https://img.shields.io/github/issues/henrylee2cn/erpc.svg?style=flat-square)](https://github.com/henrylee2cn/erpc/issues?q=is%3Aopen+is%3Aissue) [![github closed issues](https://img.shields.io/github/issues-closed-raw/henrylee2cn/erpc.svg?style=flat-square)](https://github.com/henrylee2cn/erpc/issues?q=is%3Aissue+is%3Aclosed) [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](http://godoc.org/github.com/henrylee2cn/erpc) [![view examples](https://img.shields.io/badge/learn%20by-examples-00BCD4.svg?style=flat-square)](https://github.com/henrylee2cn/erpc/tree/master/examples)
+<!-- # eRPC [![GitHub release](https://img.shields.io/github/release/henrylee2cn/erpc.svg?style=flat-square)](https://github.com/henrylee2cn/erpc/releases) [![report card](https://goreportcard.com/badge/github.com/henrylee2cn/erpc?style=flat-square)](http://goreportcard.com/report/henrylee2cn/erpc) [![github issues](https://img.shields.io/github/issues/henrylee2cn/erpc.svg?style=flat-square)](https://github.com/henrylee2cn/erpc/issues?q=is%3Aopen+is%3Aissue) [![github closed issues](https://img.shields.io/github/issues-closed-raw/henrylee2cn/erpc.svg?style=flat-square)](https://github.com/henrylee2cn/erpc/issues?q=is%3Aissue+is%3Aclosed) [![GoDoc](https://img.shields.io/badge/go.dev-reference-blue.svg?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/henrylee2cn/erpc?tab=doc) [![view examples](https://img.shields.io/badge/learn%20by-examples-00BCD4.svg?style=flat-square)](https://github.com/henrylee2cn/erpc/tree/master/examples) -->
 <!-- [![view Go网络编程群](https://img.shields.io/badge/官方QQ群-Go网络编程(42730308)-27a5ea.svg?style=flat-square)](http://jq.qq.com/?_wv=1027&k=fzi4p1) -->
 
-Teleport is a versatile, high-performance and flexible socket framework.
+eRPC is an efficient, extensible and easy-to-use RPC framework.
 
-It can be used for peer-peer, rpc, gateway, micro services, push services, game services and so on.
+Suitable for RPC, Microservice, Peer-to-Peer, IM, Game and other fields.
 
-[简体中文](https://github.com/henrylee2cn/teleport/tree/v5/README_ZH.md)
+[简体中文](https://github.com/henrylee2cn/erpc/tree/master/README_ZH.md)
 
 
-![Teleport-Framework](https://github.com/henrylee2cn/teleport/raw/v5/doc/teleport_module_diagram.png)
+![eRPC-Framework](https://github.com/henrylee2cn/erpc/raw/master/doc/erpc_module_diagram.png)
+
+
+## Install
+
+
+- go vesion ≥ 1.11
+
+- install
+```sh
+GO111MODULE=on go get -u -v -insecure github.com/henrylee2cn/erpc/v6
+```
+
+- import
+```go
+import "github.com/henrylee2cn/erpc/v6"
+```
+
+## Feature
+
+- Use peer to provide the same API package for the server and client
+- Provide multi-layout abstractions such as:
+  - peer
+  - session/socket
+  - router
+  - handle/context
+  - message
+  - protocol
+  - codec
+  - transfer filter
+  - plugin
+- Support reboot and shutdown gracefully
+- HTTP-compatible message format:
+  - Composed of two parts, the `Header` and the `Body`
+  - `Header` contains metadata in the same format as HTTP header
+  - `Body` supports for custom codec of Content Type-Like, already implemented:
+    - Protobuf
+    - Thrift
+    - JSON
+    - XML
+    - Form
+    - Plain
+  - Support push, call-reply and more message types
+- Support custom message protocol, and provide some common implementations:
+  - `rawproto` - Default high performance binary protocol
+  - `jsonproto` - JSON message protocol
+  - `pbproto` - Ptotobuf message protocol
+  - `thriftproto` - Thrift message protocol
+  - `httproto` - HTTP message protocol
+- Optimized high performance transport layer
+  - Use Non-block socket and I/O multiplexing technology
+  - Support setting the size of socket I/O buffer
+  - Support setting the size of the reading message (if exceed disconnect it)
+  - Support controling the connection file descriptor
+- Support a variety of network types:
+  - `tcp`
+  - `tcp4`
+  - `tcp6`
+  - `unix`
+  - `unixpacket`
+  - `kcp`
+  - `quic`
+  - other
+    - websocket
+    - evio
+- Provide a rich plug-in point, and already implemented:
+  - auth
+  - binder
+  - heartbeat
+  - ignorecase(service method)
+  - overloader
+  - proxy(for unknown service method)
+  - secure
+- Powerful and flexible logging system:
+  - Detailed log information, support print input and output details
+  - Support setting slow operation alarm threshold
+  - Support for custom implementation log component
+- Client session support automatically redials after disconnection
 
 
 ## Benchmark
@@ -24,7 +102,7 @@ It can be used for peer-peer, rpc, gateway, micro services, push services, game 
 - Message codec: protobuf
 - Sent total 1000000 messages
 
-- teleport
+- erpc
 
 | client concurrency | mean(ms) | median(ms) | max(ms) | min(ms) | throughput(TPS) |
 | ------------------ | -------- | ---------- | ------- | ------- | --------------- |
@@ -34,7 +112,7 @@ It can be used for peer-peer, rpc, gateway, micro services, push services, game 
 | 2000               | 39       | 54         | 409     | 0       | 42551           |
 | 5000               | 96       | 128        | 1148    | 0       | 46367           |
 
-- teleport/socket
+- erpc/socket
 
 | client concurrency | mean(ms) | median(ms) | max(ms) | min(ms) | throughput(TPS) |
 | ------------------ | -------- | ---------- | ------- | ------- | --------------- |
@@ -58,55 +136,18 @@ It can be used for peer-peer, rpc, gateway, micro services, push services, game 
 
 **[More Detail](https://github.com/henrylee2cn/rpc-benchmark)**
 
-- Profile torch of teleport/socket
+- Profile torch of erpc/socket
 
-![tp_socket_profile_torch](https://github.com/henrylee2cn/teleport/raw/v5/doc/tp_socket_profile_torch.png)
+![erpc_socket_profile_torch](https://github.com/henrylee2cn/erpc/raw/master/doc/erpc_socket_profile_torch.png)
 
-**[svg file](https://github.com/henrylee2cn/teleport/raw/v5/doc/tp_socket_profile_torch.svg)**
+**[svg file](https://github.com/henrylee2cn/erpc/raw/master/doc/erpc_socket_profile_torch.svg)**
 
-- Heap torch of teleport/socket
+- Heap torch of erpc/socket
 
-![tp_socket_heap_torch](https://github.com/henrylee2cn/teleport/raw/v5/doc/tp_socket_heap_torch.png)
+![erpc_socket_heap_torch](https://github.com/henrylee2cn/erpc/raw/master/doc/erpc_socket_heap_torch.png)
 
-**[svg file](https://github.com/henrylee2cn/teleport/raw/v5/doc/tp_socket_heap_torch.svg)**
+**[svg file](https://github.com/henrylee2cn/erpc/raw/master/doc/erpc_socket_heap_torch.svg)**
 
-## Version
-
-| version | status  | branch                                   |
-| ------- | ------- | ---------------------------------------- |
-| v5      | release | [v5](https://github.com/henrylee2cn/teleport/tree/v5) |
-| v4      | release | [v4](https://github.com/henrylee2cn/teleport/tree/v4) |
-| v3      | release | [v3](https://github.com/henrylee2cn/teleport/tree/v3) |
-| v2      | release | [v2](https://github.com/henrylee2cn/teleport/tree/v2) |
-| v1      | release | [v1](https://github.com/henrylee2cn/teleport/tree/v1) |
-
-
-## Install
-
-```sh
-go get -u -f github.com/henrylee2cn/teleport
-```
-
-## Feature
-
-- Server and client are peer-to-peer, have the same API method
-- Support custom communication protocol
-- Support set the size of socket I/O buffer
-- Message contains both `Header` and `Body` two parts
-- Message `Header` contains metadata in the same format as HTTP header
-- Support for customizing `Body` coding types separately, e.g `JSON` `Protobuf` `string`
-- Support push, call, reply and other means of communication
-- Support plug-in mechanism, can customize authentication, heartbeat, micro service registration center, statistics, etc.
-- Whether server or client, the peer support reboot and shutdown gracefully
-- Support reverse proxy
-- Detailed log information, support print input and output details
-- Supports setting slow operation alarm threshold
-- Use I/O multiplexing technology
-- Support setting the size of the reading message (if exceed disconnect it)
-- Provide the context of the handler
-- Client session support automatically redials after disconnection
-- Support network list: `tcp`, `tcp4`, `tcp6`, `unix`, `unixpacket` and so on
-- Provide an operating interface to control the connection file descriptor
 
 ## Example
 
@@ -119,19 +160,21 @@ import (
 	"fmt"
 	"time"
 
-	tp "github.com/henrylee2cn/teleport"
+	"github.com/henrylee2cn/erpc/v6"
 )
 
 func main() {
+	defer erpc.FlushLogger()
 	// graceful
-	go tp.GraceSignal()
+	go erpc.GraceSignal()
 
 	// server peer
-	srv := tp.NewPeer(tp.PeerConfig{
+	srv := erpc.NewPeer(erpc.PeerConfig{
 		CountTime:   true,
 		ListenPort:  9090,
 		PrintDetail: true,
 	})
+	// srv.SetTLSConfig(erpc.GenerateTLSConfigForServer())
 
 	// router
 	srv.RouteCall(new(Math))
@@ -140,7 +183,7 @@ func main() {
 	go func() {
 		for {
 			time.Sleep(time.Second * 5)
-			srv.RangeSession(func(sess tp.Session) bool {
+			srv.RangeSession(func(sess erpc.Session) bool {
 				sess.Push(
 					"/push/status",
 					fmt.Sprintf("this is a broadcast, server time: %v", time.Now()),
@@ -156,13 +199,13 @@ func main() {
 
 // Math handler
 type Math struct {
-	tp.CallCtx
+	erpc.CallCtx
 }
 
 // Add handles addition request
-func (m *Math) Add(arg *[]int) (int, *tp.Rerror) {
-	// test query parameter
-	tp.Infof("author: %s", m.Query().Get("author"))
+func (m *Math) Add(arg *[]int) (int, *erpc.Status) {
+	// test meta
+	erpc.Infof("author: %s", m.PeekMeta("author"))
 	// add
 	var r int
 	for _, a := range *arg {
@@ -181,209 +224,50 @@ package main
 import (
 	"time"
 
-	tp "github.com/henrylee2cn/teleport"
+	"github.com/henrylee2cn/erpc/v6"
 )
 
 func main() {
-	// log level
-	tp.SetLoggerLevel("ERROR")
+	defer erpc.SetLoggerLevel("ERROR")()
 
-	cli := tp.NewPeer(tp.PeerConfig{})
+	cli := erpc.NewPeer(erpc.PeerConfig{})
 	defer cli.Close()
+	// cli.SetTLSConfig(&tls.Config{InsecureSkipVerify: true})
 
 	cli.RoutePush(new(Push))
 
-	sess, err := cli.Dial(":9090")
-	if err != nil {
-		tp.Fatalf("%v", err)
+	sess, stat := cli.Dial(":9090")
+	if !stat.OK() {
+		erpc.Fatalf("%v", stat)
 	}
 
 	var result int
-	rerr := sess.Call("/math/add?author=henrylee2cn",
+	stat = sess.Call("/math/add",
 		[]int{1, 2, 3, 4, 5},
 		&result,
-	).Rerror()
-	if rerr != nil {
-		tp.Fatalf("%v", rerr)
+		erpc.WithAddMeta("author", "henrylee2cn"),
+	).Status()
+	if !stat.OK() {
+		erpc.Fatalf("%v", stat)
 	}
-	tp.Printf("result: %d", result)
-
-	tp.Printf("wait for 10s...")
+	erpc.Printf("result: %d", result)
+	erpc.Printf("Wait 10 seconds to receive the push...")
 	time.Sleep(time.Second * 10)
 }
 
 // Push push handler
 type Push struct {
-	tp.PushCtx
+	erpc.PushCtx
 }
 
 // Push handles '/push/status' message
-func (p *Push) Status(arg *string) *tp.Rerror {
-	tp.Printf("%s", *arg)
+func (p *Push) Status(arg *string) *erpc.Status {
+	erpc.Printf("%s", *arg)
 	return nil
 }
 ```
 
-[More Examples](https://github.com/henrylee2cn/teleport/tree/v5/examples)
-
-## Design
-
-### Keywords
-
-- **Peer:** A communication instance may be a server or a client
-- **Socket:** Base on the net.Conn package, add custom package protocol, transfer pipelines and other functions
-- *Message:** The corresponding structure of the data package content element
-- **Proto:** The protocol interface of message pack/unpack 
-- **Codec:** Serialization interface for `Body`
-- **XferPipe:** Message bytes encoding pipeline, such as compression, encryption, calibration and so on
-- **XferFilter:** A interface to handle message data before transfer
-- **Plugin:** Plugins that cover all aspects of communication
-- **Session:** A connection session, with push, call, reply, close and other methods of operation
-- **Context:** Handle the received or send messages
-- **Call-Launch:** Call data from the peer
-- **Call-Handle:** Handle and reply to the calling of peer
-- **Push-Launch:** Push data to the peer
-- **Push-Handle:** Handle the pushing of peer
-- **Router:** Router that route the response handler by request information(such as a URI)
-
-### Data Message
-
-Abstracts the data message(Message Object) of the application layer and is compatible with HTTP message:
-
-![tp_data_message](https://github.com/henrylee2cn/teleport/raw/v5/doc/tp_data_message.png)
-
-
-### Protocol
-
-You can customize your own communication protocol by implementing the interface:
-
-```go
-type (
-    // Proto pack/unpack protocol scheme of socket message.
-    Proto interface {
-        // Version returns the protocol's id and name.
-        Version() (byte, string)
-        // Pack writes the Message into the connection.
-        // NOTE: Make sure to write only once or there will be package contamination!
-        Pack(Message) error
-        // Unpack reads bytes from the connection to the Message.
-        // NOTE: Concurrent unsafe!
-        Unpack(Message) error
-    }
-    ProtoFunc func(io.ReadWriter) Proto
-)
-```
-
-Next, you can specify the communication protocol in the following ways:
-
-```go
-func SetDefaultProtoFunc(ProtoFunc)
-type Peer interface {
-    ...
-    ServeConn(conn net.Conn, protoFunc ...ProtoFunc) Session
-    DialContext(ctx context.Context, addr string, protoFunc ...ProtoFunc) (Session, *Rerror)
-    Dial(addr string, protoFunc ...ProtoFunc) (Session, *Rerror)
-    Listen(protoFunc ...ProtoFunc) error
-    ...
-}
-```
-
-Default protocol `RawProto`(Big Endian):
-
-```sh
-{4 bytes message length}
-{1 byte protocol version}
-{1 byte transfer pipe length}
-{transfer pipe IDs}
-# The following is handled data by transfer pipe
-{2 bytes sequence length}
-{sequence}
-{1 byte message type} # e.g. CALL:1; REPLY:2; PUSH:3
-{2 bytes URI length}
-{URI}
-{2 bytes metadata length}
-{metadata(urlencoded)}
-{1 byte body codec id}
-{body}
-```
-
-
-### XferPipe
-
-Transfer filter pipe, handles byte stream of message when transfer.
-
-```go
-// XferFilter handles byte stream of message when transfer.
-type XferFilter interface {
-    // ID returns transfer filter id.
-    ID() byte
-    // Name returns transfer filter name.
-    Name() string
-    // OnPack performs filtering on packing.
-    OnPack([]byte) ([]byte, error)
-    // OnUnpack performs filtering on unpacking.
-    OnUnpack([]byte) ([]byte, error)
-}
-// Get returns transfer filter by id.
-func Get(id byte) (XferFilter, error)
-// GetByName returns transfer filter by name.
-func GetByName(name string) (XferFilter, error)
-
-// XferPipe transfer filter pipe, handlers from outer-most to inner-most.
-// NOTE: the length can not be bigger than 255!
-type XferPipe struct {
-    // Has unexported fields.
-}
-func NewXferPipe() *XferPipe
-func (x *XferPipe) Append(filterID ...byte) error
-func (x *XferPipe) AppendFrom(src *XferPipe)
-func (x *XferPipe) IDs() []byte
-func (x *XferPipe) Len() int
-func (x *XferPipe) Names() []string
-func (x *XferPipe) OnPack(data []byte) ([]byte, error)
-func (x *XferPipe) OnUnpack(data []byte) ([]byte, error)
-func (x *XferPipe) Range(callback func(idx int, filter XferFilter) bool)
-func (x *XferPipe) Reset()
-```
-
-
-### Codec
-
-The body's codec set.
-
-```go
-type Codec interface {
-    // ID returns codec id.
-    ID() byte
-    // Name returns codec name.
-    Name() string
-    // Marshal returns the encoding of v.
-    Marshal(v interface{}) ([]byte, error)
-    // Unmarshal parses the encoded data and stores the result
-    // in the value pointed to by v.
-    Unmarshal(data []byte, v interface{}) error
-}
-```
-
-
-### Plugin
-
-Plug-ins during runtime.
-
-```go
-type (
-    // Plugin plugin background
-    Plugin interface {
-        Name() string
-    }
-    // PreNewPeerPlugin is executed before creating peer.
-    PreNewPeerPlugin interface {
-        Plugin
-        PreNewPeer(*PeerConfig, *PluginContainer) error
-    }
-    ...
-)
-```
+[More Examples](https://github.com/henrylee2cn/erpc/tree/master/examples)
 
 
 ## Usage
@@ -392,7 +276,7 @@ type (
 
 ```go
 // Start a server
-var peer1 = tp.NewPeer(tp.PeerConfig{
+var peer1 = erpc.NewPeer(erpc.PeerConfig{
     ListenPort: 9090, // for server role
 })
 peer1.Listen()
@@ -400,7 +284,7 @@ peer1.Listen()
 ...
 
 // Start a client
-var peer2 = tp.NewPeer(tp.PeerConfig{})
+var peer2 = erpc.NewPeer(erpc.PeerConfig{})
 var sess, err = peer2.Dial("127.0.0.1:8080")
 ```
 
@@ -408,9 +292,9 @@ var sess, err = peer2.Dial("127.0.0.1:8080")
 
 ```go
 type Aaa struct {
-    tp.CallCtx
+    erpc.CallCtx
 }
-func (x *Aaa) XxZz(arg *<T>) (<T>, *tp.Rerror) {
+func (x *Aaa) XxZz(arg *<T>) (<T>, *erpc.Status) {
     ...
     return r, nil
 }
@@ -442,7 +326,11 @@ peer.RouteCallFunc((*Aaa).XxZz)
     - `aa_bb` -> `/aa/bb`
     - `ABC_XYZ` -> `/abc/xyz`
     ```go
+<<<<<<< HEAD
     tp.SetServiceMethodMapper(tp.HTTPServiceMethodMapper)
+=======
+    erpc.SetServiceMethodMapper(erpc.HTTPServiceMethodMapper)
+>>>>>>> 9a46c7d6f1738b0bb85ebe4a21db0e6dcc501751
     ```
 
 - The mapping(RPCServiceMethodMapper) of struct(func) name to service methods:
@@ -455,13 +343,17 @@ peer.RouteCallFunc((*Aaa).XxZz)
     - `aa_bb` -> `aa.bb`
     - `ABC_XYZ` -> `ABC.XYZ`
     ```go
+<<<<<<< HEAD
     tp.SetServiceMethodMapper(tp.RPCServiceMethodMapper)
+=======
+    erpc.SetServiceMethodMapper(erpc.RPCServiceMethodMapper)
+>>>>>>> 9a46c7d6f1738b0bb85ebe4a21db0e6dcc501751
     ```
 
 ### Call-Function API template
 
 ```go
-func XxZz(ctx tp.CallCtx, arg *<T>) (<T>, *tp.Rerror) {
+func XxZz(ctx erpc.CallCtx, arg *<T>) (<T>, *erpc.Status) {
     ...
     return r, nil
 }
@@ -480,9 +372,9 @@ peer.RouteCallFunc(XxZz)
 
 ```go
 type Bbb struct {
-    tp.PushCtx
+    erpc.PushCtx
 }
-func (b *Bbb) YyZz(arg *<T>) *tp.Rerror {
+func (b *Bbb) YyZz(arg *<T>) *erpc.Status {
     ...
     return nil
 }
@@ -506,7 +398,7 @@ peer.RoutePushFunc((*Bbb).YyZz)
 
 ```go
 // YyZz register the handler
-func YyZz(ctx tp.PushCtx, arg *<T>) *tp.Rerror {
+func YyZz(ctx erpc.PushCtx, arg *<T>) *erpc.Status {
     ...
     return nil
 }
@@ -524,7 +416,7 @@ peer.RoutePushFunc(YyZz)
 ### Unknown-Call-Function API template
 
 ```go
-func XxxUnknownCall (ctx tp.UnknownCallCtx) (interface{}, *tp.Rerror) {
+func XxxUnknownCall (ctx erpc.UnknownCallCtx) (interface{}, *erpc.Status) {
     ...
     return r, nil
 }
@@ -540,7 +432,7 @@ peer.SetUnknownCall(XxxUnknownCall)
 ### Unknown-Push-Function API template
 
 ```go
-func XxxUnknownPush(ctx tp.UnknownPushCtx) *tp.Rerror {
+func XxxUnknownPush(ctx erpc.UnknownPushCtx) *erpc.Status {
     ...
     return nil
 }
@@ -564,21 +456,21 @@ func NewIgnoreCase() *ignoreCase {
 type ignoreCase struct{}
 
 var (
-    _ tp.PostReadCallHeaderPlugin = new(ignoreCase)
-    _ tp.PostReadPushHeaderPlugin = new(ignoreCase)
+    _ erpc.PostReadCallHeaderPlugin = new(ignoreCase)
+    _ erpc.PostReadPushHeaderPlugin = new(ignoreCase)
 )
 
 func (i *ignoreCase) Name() string {
     return "ignoreCase"
 }
 
-func (i *ignoreCase) PostReadCallHeader(ctx tp.ReadCtx) *tp.Rerror {
+func (i *ignoreCase) PostReadCallHeader(ctx erpc.ReadCtx) *erpc.Status {
     // Dynamic transformation path is lowercase
     ctx.UriObject().Path = strings.ToLower(ctx.UriObject().Path)
     return nil
 }
 
-func (i *ignoreCase) PostReadPushHeader(ctx tp.ReadCtx) *tp.Rerror {
+func (i *ignoreCase) PostReadPushHeader(ctx erpc.ReadCtx) *erpc.Status {
     // Dynamic transformation path is lowercase
     ctx.UriObject().Path = strings.ToLower(ctx.UriObject().Path)
     return nil
@@ -603,11 +495,11 @@ peer.SetUnknownPush(XxxUnknownPush)
 
 ```go
 type PeerConfig struct {
-    Network            string        `yaml:"network"              ini:"network"              comment:"Network; tcp, tcp4, tcp6, unix or unixpacket"`
+    Network            string        `yaml:"network"              ini:"network"              comment:"Network; tcp, tcp4, tcp6, unix, unixpacket, kcp or quic"`
     LocalIP            string        `yaml:"local_ip"             ini:"local_ip"             comment:"Local IP"`
     ListenPort         uint16        `yaml:"listen_port"          ini:"listen_port"          comment:"Listen port; for server role"`
-    DefaultDialTimeout time.Duration `yaml:"default_dial_timeout" ini:"default_dial_timeout" comment:"Default maximum duration for dialing; for client role; ns,µs,ms,s,m,h"`
-    RedialTimes        int32         `yaml:"redial_times"         ini:"redial_times"         comment:"The maximum times of attempts to redial, after the connection has been unexpectedly broken; for client role"`
+    DialTimeout time.Duration `yaml:"dial_timeout" ini:"dial_timeout" comment:"Default maximum duration for dialing; for client role; ns,µs,ms,s,m,h"`
+    RedialTimes        int32         `yaml:"redial_times"         ini:"redial_times"         comment:"The maximum times of attempts to redial, after the connection has been unexpectedly broken; Unlimited when <0; for client role"`
 	RedialInterval     time.Duration `yaml:"redial_interval"      ini:"redial_interval"      comment:"Interval of redialing each time, default 100ms; for client role; ns,µs,ms,s,m,h"`
     DefaultBodyCodec   string        `yaml:"default_body_codec"   ini:"default_body_codec"   comment:"Default body codec type id"`
     DefaultSessionAge  time.Duration `yaml:"default_session_age"  ini:"default_session_age"  comment:"Default session max age, if less than or equal to 0, no time limit; ns,µs,ms,s,m,h"`
@@ -670,50 +562,55 @@ type PeerConfig struct {
 
 | package                                  | import                                   | description                  |
 | ---------------------------------------- | ---------------------------------------- | ---------------------------- |
-| [json](https://github.com/henrylee2cn/teleport/blob/v5/codec/json_codec.go) | `import "github.com/henrylee2cn/teleport/codec"` | JSON codec(teleport own)     |
-| [protobuf](https://github.com/henrylee2cn/teleport/blob/v5/codec/protobuf_codec.go) | `import "github.com/henrylee2cn/teleport/codec"` | Protobuf codec(teleport own) |
-| [plain](https://github.com/henrylee2cn/teleport/blob/v5/codec/plain_codec.go) | `import "github.com/henrylee2cn/teleport/codec"` | Plain text codec(teleport own)   |
-| [form](https://github.com/henrylee2cn/teleport/blob/v5/codec/form_codec.go) | `import "github.com/henrylee2cn/teleport/codec"` | Form(url encode) codec(teleport own)   |
+| [json](https://github.com/henrylee2cn/erpc/blob/master/codec/json_codec.go) | `"github.com/henrylee2cn/erpc/v6/codec"` | JSON codec(erpc own)     |
+| [protobuf](https://github.com/henrylee2cn/erpc/blob/master/codec/protobuf_codec.go) | `"github.com/henrylee2cn/erpc/v6/codec"` | Protobuf codec(erpc own) |
+| [thrift](https://github.com/henrylee2cn/erpc/blob/master/codec/thrift_codec.go) | `"github.com/henrylee2cn/erpc/v6/codec"` | Form(url encode) codec(erpc own)   |
+| [xml](https://github.com/henrylee2cn/erpc/blob/master/codec/xml_codec.go) | `"github.com/henrylee2cn/erpc/v6/codec"` | Form(url encode) codec(erpc own)   |
+| [plain](https://github.com/henrylee2cn/erpc/blob/master/codec/plain_codec.go) | `"github.com/henrylee2cn/erpc/v6/codec"` | Plain text codec(erpc own)   |
+| [form](https://github.com/henrylee2cn/erpc/blob/master/codec/form_codec.go) | `"github.com/henrylee2cn/erpc/v6/codec"` | Form(url encode) codec(erpc own)   |
 
 ### Plugin
 
 | package                                  | import                                   | description                              |
 | ---------------------------------------- | ---------------------------------------- | ---------------------------------------- |
-| [auth](https://github.com/henrylee2cn/teleport/tree/v5/plugin/auth) | `import "github.com/henrylee2cn/teleport/plugin/auth"` | A auth plugin for verifying peer at the first time |
-| [binder](https://github.com/henrylee2cn/teleport/tree/v5/plugin/binder) | `import binder "github.com/henrylee2cn/teleport/plugin/binder"` | Parameter Binding Verification for Struct Handler |
-| [heartbeat](https://github.com/henrylee2cn/teleport/tree/v5/plugin/heartbeat) | `import heartbeat "github.com/henrylee2cn/teleport/plugin/heartbeat"` | A generic timing heartbeat plugin        |
-| [proxy](https://github.com/henrylee2cn/teleport/tree/v5/plugin/proxy) | `import "github.com/henrylee2cn/teleport/plugin/proxy"` | A proxy plugin for handling unknown calling or pushing |
-[secure](https://github.com/henrylee2cn/teleport/tree/v5/plugin/secure)|`import secure "github.com/henrylee2cn/teleport/plugin/secure"`|Encrypting/decrypting the message body
+| [auth](https://github.com/henrylee2cn/erpc/tree/master/plugin/auth) | `"github.com/henrylee2cn/erpc/v6/plugin/auth"` | An auth plugin for verifying peer at the first time |
+| [binder](https://github.com/henrylee2cn/erpc/tree/master/plugin/binder) | `"github.com/henrylee2cn/erpc/v6/plugin/binder"` | Parameter Binding Verification for Struct Handler |
+| [heartbeat](https://github.com/henrylee2cn/erpc/tree/master/plugin/heartbeat) | `"github.com/henrylee2cn/erpc/v6/plugin/heartbeat"` | A generic timing heartbeat plugin        |
+| [proxy](https://github.com/henrylee2cn/erpc/tree/master/plugin/proxy) | `"github.com/henrylee2cn/erpc/v6/plugin/proxy"` | A proxy plugin for handling unknown calling or pushing |
+[secure](https://github.com/henrylee2cn/erpc/tree/master/plugin/secure)|`"github.com/henrylee2cn/erpc/v6/plugin/secure"` | Encrypting/decrypting the message body
+[overloader](https://github.com/henrylee2cn/erpc/tree/master/plugin/overloader)|`"github.com/henrylee2cn/erpc/v6/plugin/overloader"` | A plugin to protect erpc from overload
 
 ### Protocol
 
 | package                                  | import                                   | description                              |
 | ---------------------------------------- | ---------------------------------------- | ---------------------------------------- |
-| [rawproto](https://github.com/henrylee2cn/teleport/tree/v5/proto/rawproto) | `import "github.com/henrylee2cn/teleport/proto/rawproto` | A fast socket communication protocol(teleport default protocol) |
-| [jsonproto](https://github.com/henrylee2cn/teleport/tree/v5/proto/jsonproto) | `import "github.com/henrylee2cn/teleport/proto/jsonproto"` | A JSON socket communication protocol     |
-| [pbproto](https://github.com/henrylee2cn/teleport/tree/v5/proto/pbproto) | `import "github.com/henrylee2cn/teleport/proto/pbproto"` | A Protobuf socket communication protocol     |
-| [thriftproto](https://github.com/henrylee2cn/teleport/tree/v5/proto/thriftproto) | `import "github.com/henrylee2cn/teleport/proto/thriftproto"` | A Thrift communication protocol     |
+| [rawproto](https://github.com/henrylee2cn/erpc/tree/master/proto/rawproto) | `"github.com/henrylee2cn/erpc/v6/proto/rawproto` | A fast socket communication protocol(erpc default protocol) |
+| [jsonproto](https://github.com/henrylee2cn/erpc/tree/master/proto/jsonproto) | `"github.com/henrylee2cn/erpc/v6/proto/jsonproto"` | A JSON socket communication protocol     |
+| [pbproto](https://github.com/henrylee2cn/erpc/tree/master/proto/pbproto) | `"github.com/henrylee2cn/erpc/v6/proto/pbproto"` | A Protobuf socket communication protocol     |
+| [thriftproto](https://github.com/henrylee2cn/erpc/tree/master/proto/thriftproto) | `"github.com/henrylee2cn/erpc/v6/proto/thriftproto"` | A Thrift communication protocol     |
+| [httproto](https://github.com/henrylee2cn/erpc/tree/master/proto/httproto) | `"github.com/henrylee2cn/erpc/v6/proto/httproto"` | A HTTP style socket communication protocol     |
 
 ### Transfer-Filter
 
 | package                                  | import                                   | description                              |
 | ---------------------------------------- | ---------------------------------------- | ---------------------------------------- |
-| [gzip](https://github.com/henrylee2cn/teleport/tree/v5/xfer/gzip) | `import "github.com/henrylee2cn/teleport/xfer/gzip"` | Gzip(teleport own)                       |
-| [md5](https://github.com/henrylee2cn/teleport/tree/v5/xfer/md5) | `import "github.com/henrylee2cn/teleport/xfer/md5"` | Provides a integrity check transfer filter |
+| [gzip](https://github.com/henrylee2cn/erpc/tree/master/xfer/gzip) | `"github.com/henrylee2cn/erpc/v6/xfer/gzip"` | Gzip(erpc own)                       |
+| [md5](https://github.com/henrylee2cn/erpc/tree/master/xfer/md5) | `"github.com/henrylee2cn/erpc/v6/xfer/md5"` | Provides a integrity check transfer filter |
 
 ### Mixer
 
 | package                                  | import                                   | description                              |
 | ---------------------------------------- | ---------------------------------------- | ---------------------------------------- |
-| [multiclient](https://github.com/henrylee2cn/teleport/tree/v5/mixer/multiclient) | `import "github.com/henrylee2cn/teleport/mixer/multiclient"` | Higher throughput client connection pool when transferring large messages (such as downloading files) |
-| [websocket](https://github.com/henrylee2cn/teleport/tree/v5/mixer/websocket) | `import "github.com/henrylee2cn/teleport/mixer/websocket"` | Makes the Teleport framework compatible with websocket protocol as specified in RFC 6455 |
+| [multiclient](https://github.com/henrylee2cn/erpc/tree/master/mixer/multiclient) | `"github.com/henrylee2cn/erpc/v6/mixer/multiclient"` | Higher throughput client connection pool when transferring large messages (such as downloading files) |
+| [websocket](https://github.com/henrylee2cn/erpc/tree/master/mixer/websocket) | `"github.com/henrylee2cn/erpc/v6/mixer/websocket"` | Makes the eRPC framework compatible with websocket protocol as specified in RFC 6455 |
+| [evio](https://github.com/henrylee2cn/erpc/tree/master/mixer/evio) | `"github.com/henrylee2cn/erpc/v6/mixer/evio"` | A fast event-loop networking framework that uses the erpc API layer |
 | [html](https://github.com/xiaoenai/tp-micro/tree/master/helper/mod-html) | `html "github.com/xiaoenai/tp-micro/helper/mod-html"` | HTML render for http client |
 
-## Projects based on Teleport
+## Projects based on eRPC
 
 | project                                  | description                              |
 | ---------------------------------------- | ---------------------------------------- |
-| [TP-Micro](https://github.com/xiaoenai/tp-micro) | TP-Micro is a simple, powerful micro service framework based on Teleport |
+| [TP-Micro](https://github.com/xiaoenai/tp-micro) | TP-Micro is a simple, powerful micro service framework based on eRPC |
 | [Pholcus](https://github.com/henrylee2cn/pholcus) | Pholcus is a distributed, high concurrency and powerful web crawler software |
 
 ## Business Users
@@ -725,7 +622,8 @@ type PeerConfig struct {
 <a href="http://www.fun.tv"><img src="http://static.funshion.com/open/static/img/logo.gif" height="70" alt="北京风行在线技术有限公司"/></a>
 &nbsp;&nbsp;
 <a href="http://www.kejishidai.cn"><img src="http://simg.ktvms.com/picture/logo.png" height="70" alt="北京可即时代网络公司"/></a>
+<a href="https://www.kuaishou.com/"><img src="https://inews.gtimg.com/newsapp_bt/0/4400789257/1000" height="70" alt="快手短视频平台"/></a>
 
 ## License
 
-Teleport is under Apache v2 License. See the [LICENSE](https://github.com/henrylee2cn/teleport/raw/v5/LICENSE) file for the full license text
+eRPC is under Apache v2 License. See the [LICENSE](https://github.com/henrylee2cn/erpc/raw/master/LICENSE) file for the full license text

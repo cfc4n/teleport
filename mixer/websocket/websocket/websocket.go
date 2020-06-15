@@ -400,19 +400,19 @@ Trivial usage:
 
 	// receive text frame
 	var message string
-	webtp.Message.Receive(ws, &message)
+	websocket.Message.Receive(ws, &message)
 
 	// send text frame
 	message = "hello"
-	webtp.Message.Send(ws, message)
+	websocket.Message.Send(ws, message)
 
 	// receive binary frame
 	var data []byte
-	webtp.Message.Receive(ws, &data)
+	websocket.Message.Receive(ws, &data)
 
 	// send binary frame
 	data = []byte{0, 1, 2}
-	webtp.Message.Send(ws, data)
+	websocket.Message.Send(ws, data)
 
 */
 var Message = Codec{marshal, unmarshal}

@@ -3,7 +3,7 @@ package socket
 import (
 	"testing"
 
-	"github.com/henrylee2cn/teleport/xfer/gzip"
+	"github.com/henrylee2cn/erpc/v6/xfer/gzip"
 )
 
 func TestMessageString(t *testing.T) {
@@ -19,6 +19,7 @@ func TestMessageString(t *testing.T) {
 	m.SetBody(map[string]int{"a": 1})
 	m.SetServiceMethod("service/method")
 	m.SetBodyCodec(5)
+	m.SetStatus(NewStatus(400, "this is msg", "this is cause"))
 	m.Meta().Set("key", "value")
 	t.Logf("%%s:%s", m.String())
 	t.Logf("%%v:%v", m)

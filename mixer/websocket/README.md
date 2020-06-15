@@ -1,25 +1,24 @@
 ## websocket
 
-Websocket is an extension package that makes the Teleport framework compatible with websocket protocol as specified in RFC 6455.
+Websocket is an extension package that makes the eRPC framework compatible with websocket protocol as specified in RFC 6455.
 
 ### Usage
 
-`import ws "github.com/henrylee2cn/teleport/mixer/websocket"`
+`import ws "github.com/henrylee2cn/erpc/v6/mixer/websocket"`
 
 #### Test
 
 ```go
-package websocket_test
 
 import (
 	"net/http"
 	"testing"
 	"time"
 
-	tp "github.com/henrylee2cn/teleport"
-	ws "github.com/henrylee2cn/teleport/mixer/websocket"
-	"github.com/henrylee2cn/teleport/mixer/websocket/jsonSubProto"
-	"github.com/henrylee2cn/teleport/mixer/websocket/pbSubProto"
+	"github.com/henrylee2cn/erpc/v6"
+	ws "github.com/henrylee2cn/erpc/v6/mixer/websocket"
+	"github.com/henrylee2cn/erpc/v6/mixer/websocket/jsonSubProto"
+	"github.com/henrylee2cn/erpc/v6/plugin/auth"
 )
 
 type Arg struct {
@@ -27,71 +26,164 @@ type Arg struct {
 	B int `param:"<range:1:>"`
 }
 
-type P struct{ tp.CallCtx }
+type P struct{ erpc.CallCtx }
 
-func (p *P) Divide(arg *Arg) (int, *tp.Rerror) {
+func (p *P) Divide(arg *Arg) (int, *erpc.Status) {
 	return arg.A / arg.B, nil
 }
 
-func TestJSONSubWebsocket(t *testing.T) {
-	srv := tp.NewPeer(tp.PeerConfig{})
+func TestJSONWebsocket(t *testing.T) {
+	srv := ws.NewServer("/", erpc.PeerConfig{ListenPort: 9090})
+	srv.RouteCall(new(P))
+	go srv.ListenAndServe()
+
+	time.Sleep(time.Second * 1)
+
+	cli := ws.NewClient("/", erpc.PeerConfig{})
+	sess, stat := cli.Dial(":9090")
+	if !stat.OK() {
+		t.Fatal(stat)
+	}
+	var result int
+	stat = sess.Call("/p/divide", &Arg{
+		A: 10,
+		B: 2,
+	}, &result,
+	).Status()
+	if !stat.OK() {
+		t.Fatal(stat)
+	}
+	t.Logf("10/2=%d", result)
+	time.Sleep(time.Second)
+}
+
+func TestPbWebsocketTLS(t *testing.T) {
+	srv := ws.NewServer("/abc", erpc.PeerConfig{ListenPort: 9091})
+	srv.RouteCall(new(P))
+	srv.SetTLSConfig(erpc.GenerateTLSConfigForServer())
+	go srv.ListenAndServeProtobuf()
+
+	time.Sleep(time.Second * 1)
+
+	cli := ws.NewClient("/abc", erpc.PeerConfig{})
+	cli.SetTLSConfig(erpc.GenerateTLSConfigForClient())
+	sess, err := cli.DialProtobuf(":9091")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result int
+	stat := sess.Call("/p/divide", &Arg{
+		A: 10,
+		B: 2,
+	}, &result,
+	).Status()
+	if !stat.OK() {
+		t.Fatal(stat)
+	}
+	t.Logf("10/2=%d", result)
+	time.Sleep(time.Second)
+}
+
+func TestCustomizedWebsocket(t *testing.T) {
+	srv := erpc.NewPeer(erpc.PeerConfig{})
 	http.Handle("/ws", ws.NewJSONServeHandler(srv, nil))
-	go http.ListenAndServe("0.0.0.0:9090", nil)
+	go http.ListenAndServe(":9092", nil)
 	srv.RouteCall(new(P))
 	time.Sleep(time.Second * 1)
 
-	cli := tp.NewPeer(tp.PeerConfig{}, ws.NewDialPlugin("/ws"))
-	sess, err := cli.Dial("127.0.0.1:9090", jsonSubProto.NewJSONSubProtoFunc())
-	if err != nil {
-		t.Fatal(err)
+	cli := erpc.NewPeer(erpc.PeerConfig{}, ws.NewDialPlugin("/ws"))
+	sess, stat := cli.Dial(":9092", jsonSubProto.NewJSONSubProtoFunc())
+	if !stat.OK() {
+		t.Fatal(stat)
 	}
 	var result int
-	rerr := sess.Call("/p/divide", &Arg{
+	stat = sess.Call("/p/divide", &Arg{
 		A: 10,
 		B: 2,
 	}, &result,
-	).Rerror()
-	if rerr != nil {
-		t.Fatal(rerr)
+	).Status()
+	if !stat.OK() {
+		t.Fatal(stat)
 	}
 	t.Logf("10/2=%d", result)
 	time.Sleep(time.Second)
 }
 
-func TestPbSubWebsocket(t *testing.T) {
-	srv := tp.NewPeer(tp.PeerConfig{})
-	http.Handle("/ws", ws.NewPbServeHandler(srv, nil))
-	go http.ListenAndServe("0.0.0.0:9091", nil)
+func TestJSONWebsocketAuth(t *testing.T) {
+	srv := ws.NewServer(
+		"/",
+		erpc.PeerConfig{ListenPort: 9090},
+		authChecker,
+	)
 	srv.RouteCall(new(P))
+	go srv.ListenAndServe()
+
 	time.Sleep(time.Second * 1)
 
-	cli := tp.NewPeer(tp.PeerConfig{}, ws.NewDialPlugin("/ws"))
-	sess, err := cli.Dial("127.0.0.1:9091", pbSubProto.NewPbSubProtoFunc())
-	if err != nil {
-		t.Fatal(err)
+	cli := ws.NewClient(
+		"/",
+		erpc.PeerConfig{},
+		authBearer,
+	)
+	sess, stat := cli.Dial(":9090")
+	if !stat.OK() {
+		t.Fatal(stat)
 	}
 	var result int
-	rerr := sess.Call("/p/divide", &Arg{
+	stat = sess.Call("/p/divide", &Arg{
 		A: 10,
 		B: 2,
 	}, &result,
-	).Rerror()
-	if rerr != nil {
-		t.Fatal(rerr)
+	).Status()
+	if !stat.OK() {
+		t.Fatal(stat)
 	}
 	t.Logf("10/2=%d", result)
 	time.Sleep(time.Second)
 }
+
+const clientAuthInfo = "client-auth-info-12345"
+
+var authBearer = auth.NewBearerPlugin(
+	func(sess auth.Session, fn auth.SendOnce) (stat *erpc.Status) {
+		var ret string
+		stat = fn(clientAuthInfo, &ret)
+		if !stat.OK() {
+			return
+		}
+		erpc.Infof("auth info: %s, result: %s", clientAuthInfo, ret)
+		return
+	},
+	erpc.WithBodyCodec('s'),
+)
+
+var authChecker = auth.NewCheckerPlugin(
+	func(sess auth.Session, fn auth.RecvOnce) (ret interface{}, stat *erpc.Status) {
+		var authInfo string
+		stat = fn(&authInfo)
+		if !stat.OK() {
+			return
+		}
+		erpc.Infof("auth info: %v", authInfo)
+		if clientAuthInfo != authInfo {
+			return nil, erpc.NewStatus(403, "auth fail", "auth fail detail")
+		}
+		return "pass", nil
+	},
+	erpc.WithBodyCodec('s'),
+)
 ```
 
 test command:
 
 ```sh
-go test -v -run=TestJSONSubWebsocket
-go test -v -run=TestPbSubWebsocket
+go test -v -run=TestJSONWebsocket
+go test -v -run=TestPbWebsocketTLS
+go test -v -run=TestCustomizedWebsocket
+go test -v -run=TestJSONWebsocketAuth
 ```
 
-Among them, TestJSONSubWebsocket's request body is:
+Among them, TestJSONWebsocket's request body is:
 
 ```json
 {
@@ -105,7 +197,7 @@ Among them, TestJSONSubWebsocket's request body is:
 }
 ```
 
-TestJSONSubWebsocket's response body is:
+TestJSONWebsocket's response body is:
 
 ```json
 {

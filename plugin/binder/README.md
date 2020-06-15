@@ -4,7 +4,7 @@ Parameter Binding Verification Plugin for Struct Handler.
 
 ### Usage
 
-`import "github.com/henrylee2cn/teleport/plugin/binder"`
+`import "github.com/henrylee2cn/erpc/v6/plugin/binder"`
 
 #### Param-Tags
 
@@ -17,7 +17,7 @@ param |   len    |      no      |   (e.g.`param:"<len:3:6>"`)  | Length range [a
 param |   range  |      no      |   (e.g.`param:"<range:0:10>"`)   | Numerical range [a,b] of parameter's value
 param |  nonzero |      no      |    -    | Not allowed to zero
 param |  regexp  |      no      |   (e.g.`param:"<regexp:^\\w+$>"`)  | Regular expression validation
-param |   rerr   |      no      |(e.g.`param:"<rerr:100002:wrong password format>"`)| Custom error code and message
+param |   stat   |      no      |(e.g.`param:"<stat:100002:wrong password format>"`)| Custom error code and message
 
 NOTES:
 
@@ -25,7 +25,7 @@ NOTES:
 * Encountered untagged exportable anonymous structure field, automatic recursive resolution
 * Parameter name is the name of the structure field converted to snake format
 * If the parameter is not from `meta` or `swap`, it is the default from the body
-* Support for multiple rule combinations, e.g.`param:"<regexp:^\\w+$><len:6:8><rerr:100002:wrong password format>"`
+* Support for multiple rule combinations, e.g.`param:"<regexp:^\\w+$><len:6:8><stat:100002:wrong password format>"`
 
 #### Field-Types
 
@@ -57,16 +57,17 @@ import (
 	"testing"
 	"time"
 
-	tp "github.com/henrylee2cn/teleport"
-	"github.com/henrylee2cn/teleport/plugin/binder"
+	"github.com/henrylee2cn/erpc/v6"
+	"github.com/henrylee2cn/erpc/v6/plugin/binder"
 )
 
 type (
 	Arg struct {
 		A int
-		B int `param:"<range:1:100>"`
+		B int    `param:"<range:1:100>"`
+		C string `param:"<regexp:^[1-9]\\d*$>"`
 		Query
-		XyZ       string  `param:"<meta><nonzero><rerr: 100002: Parameter cannot be empty>"`
+		XyZ       string  `param:"<meta><nonzero><stat: 100002: Parameter cannot be empty>"`
 		SwapValue float32 `param:"<swap><nonzero>"`
 	}
 	Query struct {
@@ -74,10 +75,10 @@ type (
 	}
 )
 
-type P struct{ tp.CallCtx }
+type P struct{ erpc.CallCtx }
 
-func (p *P) Divide(arg *Arg) (int, *tp.Rerror) {
-	tp.Infof("meta arg _x: %s, xy_z: %s, swap_value: %v", arg.Query.X, arg.XyZ, arg.SwapValue)
+func (p *P) Divide(arg *Arg) (int, *erpc.Status) {
+	erpc.Infof("meta arg _x: %s, xy_z: %s, swap_value: %v", arg.Query.X, arg.XyZ, arg.SwapValue)
 	return arg.A / arg.B, nil
 }
 
@@ -86,51 +87,58 @@ type SwapPlugin struct{}
 func (s *SwapPlugin) Name() string {
 	return "swap_plugin"
 }
-func (s *SwapPlugin) PostReadCallBody(ctx tp.ReadCtx) *tp.Rerror {
+func (s *SwapPlugin) PostReadCallBody(ctx erpc.ReadCtx) *erpc.Status {
 	ctx.Swap().Store("swap_value", 123)
 	return nil
 }
 
 func TestBinder(t *testing.T) {
 	bplugin := binder.NewStructArgsBinder(nil)
-	srv := tp.NewPeer(
-		tp.PeerConfig{ListenPort: 9090},
+	srv := erpc.NewPeer(
+		erpc.PeerConfig{ListenPort: 9090},
 	)
 	srv.PluginContainer().AppendRight(bplugin)
 	srv.RouteCall(new(P), new(SwapPlugin))
 	go srv.ListenAndServe()
 	time.Sleep(time.Second)
 
-	cli := tp.NewPeer(tp.PeerConfig{})
-	sess, err := cli.Dial(":9090")
-	if err != nil {
-		t.Fatal(err)
+	cli := erpc.NewPeer(erpc.PeerConfig{})
+	sess, stat := cli.Dial(":9090")
+	if !stat.OK() {
+		t.Fatal(stat)
 	}
 	var result int
-	rerr := sess.Call("/p/divide?_x=testmeta_x&xy_z=testmeta_xy_z", &Arg{
+	stat = sess.Call("/p/divide", &Arg{
 		A: 10,
 		B: 2,
-	}, &result).Rerror()
-	if rerr != nil {
-		t.Fatal(rerr)
+		C: "3",
+	},
+		&result,
+		erpc.WithSetMeta("_x", "testmeta_x"),
+		erpc.WithSetMeta("xy_z", "testmeta_xy_z"),
+	).Status()
+	if !stat.OK() {
+		t.Fatal(stat)
 	}
 	t.Logf("10/2=%d", result)
-	rerr = sess.Call("/p/divide", &Arg{
+	stat = sess.Call("/p/divide", &Arg{
 		A: 10,
 		B: 5,
-	}, &result).Rerror()
-	if rerr == nil {
-		t.Fatal(rerr)
+		C: "3",
+	}, &result).Status()
+	if stat.OK() {
+		t.Fatal(stat)
 	}
-	t.Logf("10/5 error:%v", rerr)
-	rerr = sess.Call("/p/divide", &Arg{
+	t.Logf("10/5 error:%v", stat)
+	stat = sess.Call("/p/divide", &Arg{
 		A: 10,
 		B: 0,
-	}, &result).Rerror()
-	if rerr == nil {
-		t.Fatal(rerr)
+		C: "3",
+	}, &result).Status()
+	if stat.OK() {
+		t.Fatal(stat)
 	}
-	t.Logf("10/0 error:%v", rerr)
+	t.Logf("10/0 error:%v", stat)
 }
 ```
 

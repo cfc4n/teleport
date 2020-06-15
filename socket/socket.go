@@ -31,8 +31,8 @@ import (
 
 type (
 	// Socket is a generic stream-oriented network connection.
-	//
-	// Multiple goroutines may invoke methods on a Socket simultaneously.
+	// NOTE:
+	//  Multiple goroutines may invoke methods on a Socket simultaneously.
 	Socket interface {
 		// ControlFD invokes f on the underlying connection's file
 		// descriptor or handle.
@@ -87,7 +87,9 @@ type (
 		// Any blocked Read or Write operations will be unblocked and return errors.
 		Close() error
 		// Swap returns custom data swap of the socket.
-		Swap() goutil.Map
+		// NOTE:
+		//  If newSwap is not empty, reset the swap and return it.
+		Swap(newSwap ...goutil.Map) goutil.Map
 		// SwapLen returns the amount of custom data of the socket.
 		SwapLen() int
 		// ID returns the socket id.
@@ -96,11 +98,17 @@ type (
 		SetID(string)
 		// Reset reset net.Conn and ProtoFunc.
 		Reset(netConn net.Conn, protoFunc ...ProtoFunc)
-	}
-	// RawConn raw conn
-	RawConn interface {
 		// Raw returns the raw net.Conn
 		Raw() net.Conn
+	}
+	// UnsafeSocket has more unsafe methods than Socket interface.
+	UnsafeSocket interface {
+		Socket
+		// RawLocked returns the raw net.Conn,
+		// can be called in ProtoFunc.
+		// NOTE:
+		//  Make sure the external is locked before calling
+		RawLocked() net.Conn
 	}
 	socket struct {
 		net.Conn
@@ -109,6 +117,7 @@ type (
 		id               string
 		idMutex          sync.RWMutex
 		swap             goutil.Map
+		swapMutex        sync.RWMutex
 		mu               sync.RWMutex
 		curState         int32
 		fromPool         bool
@@ -121,8 +130,8 @@ const (
 )
 
 var (
-	_ net.Conn = Socket(nil)
-	_ RawConn  = (*socket)(nil)
+	_ net.Conn     = Socket(nil)
+	_ UnsafeSocket = new(socket)
 )
 
 // ErrProactivelyCloseSocket proactively close the socket error.
@@ -156,12 +165,23 @@ func newSocket(c net.Conn, protoFuncs []ProtoFunc) *socket {
 		readerWithBuffer: bufio.NewReaderSize(c, readerSize),
 	}
 	s.protocol = getProto(protoFuncs, s)
-	s.optimize()
+	s.initOptimize()
 	return s
 }
 
 // Raw returns the raw net.Conn
 func (s *socket) Raw() net.Conn {
+	s.mu.RLock()
+	conn := s.Conn
+	s.mu.RUnlock()
+	return conn
+}
+
+// RawLocked returns the raw net.Conn,
+// can be called in ProtoFunc.
+// NOTE:
+//  Make sure the external is locked before calling
+func (s *socket) RawLocked() net.Conn {
 	return s.Conn
 }
 
@@ -177,7 +197,7 @@ func (s *socket) Read(b []byte) (int, error) {
 // The file descriptor fd is guaranteed to remain valid while
 // f executes but not after f returns.
 func (s *socket) ControlFD(f func(fd uintptr)) error {
-	syscallConn, ok := s.Conn.(syscall.Conn)
+	syscallConn, ok := s.Raw().(syscall.Conn)
 	if !ok {
 		return syscall.EINVAL
 	}
@@ -193,7 +213,7 @@ func (s *socket) ControlFD(f func(fd uintptr)) error {
 // after a fixed time limit; see SetDeadline and SetWriteDeadline.
 // NOTE:
 //  For the byte stream type of body, write directly, do not do any processing;
-//  Must be safe for concurrent use by multiple goroutines.
+//  Concurrent calls are not safe.
 func (s *socket) WriteMessage(message Message) error {
 	s.mu.RLock()
 	protocol := s.protocol
@@ -208,7 +228,7 @@ func (s *socket) WriteMessage(message Message) error {
 // ReadMessage reads header and body from the connection.
 // NOTE:
 //  For the byte stream type of body, read directly, do not do any processing;
-//  Must be safe for concurrent use by multiple goroutines.
+//  Concurrent calls are not safe.
 func (s *socket) ReadMessage(message Message) error {
 	s.mu.RLock()
 	protocol := s.protocol
@@ -217,19 +237,30 @@ func (s *socket) ReadMessage(message Message) error {
 }
 
 // Swap returns custom data swap of the socket.
-func (s *socket) Swap() goutil.Map {
-	if s.swap == nil {
+// NOTE:
+//  If newSwap is not empty, reset the swap and return it.
+func (s *socket) Swap(newSwap ...goutil.Map) goutil.Map {
+	s.swapMutex.Lock()
+	if len(newSwap) > 0 {
+		s.swap = newSwap[0]
+	} else if s.swap == nil {
 		s.swap = goutil.RwMap()
 	}
-	return s.swap
+	swap := s.swap
+	s.swapMutex.Unlock()
+	return swap
 }
 
 // SwapLen returns the amount of custom data of the socket.
 func (s *socket) SwapLen() int {
-	if s.swap == nil {
+	s.swapMutex.RLock()
+	swap := s.swap
+	s.swapMutex.RUnlock()
+
+	if swap == nil {
 		return 0
 	}
-	return s.swap.Len()
+	return swap.Len()
 }
 
 // ID returns the socket id.
@@ -259,8 +290,11 @@ func (s *socket) Reset(netConn net.Conn, protoFunc ...ProtoFunc) {
 	s.readerWithBuffer.Reset(netConn)
 	s.protocol = getProto(protoFunc, s)
 	s.SetID("")
+	s.swapMutex.Lock()
+	s.swap = nil
+	s.swapMutex.Unlock()
 	atomic.StoreInt32(&s.curState, normal)
-	s.optimize()
+	s.initOptimize()
 	s.mu.Unlock()
 }
 
@@ -280,11 +314,13 @@ func (s *socket) Close() error {
 
 	var err error
 	if s.Conn != nil {
-		err = s.Conn.Close()
+		_ = s.Conn.Close()
 	}
 	if s.fromPool {
 		s.Conn = nil
+		s.swapMutex.Lock()
 		s.swap = nil
+		s.swapMutex.Unlock()
 		s.protocol = nil
 		socketPool.Put(s)
 	}
@@ -295,28 +331,8 @@ func (s *socket) isActiveClosed() bool {
 	return atomic.LoadInt32(&s.curState) == activeClose
 }
 
-func (s *socket) optimize() {
-	if c, ok := s.Conn.(ifaceSetKeepAlive); ok {
-		if changeKeepAlive {
-			c.SetKeepAlive(keepAlive)
-		}
-		if keepAlivePeriod >= 0 && keepAlive {
-			c.SetKeepAlivePeriod(keepAlivePeriod)
-		}
-	}
-	if c, ok := s.Conn.(ifaceSetBuffer); ok {
-		if readBuffer >= 0 {
-			c.SetReadBuffer(readBuffer)
-		}
-		if writeBuffer >= 0 {
-			c.SetWriteBuffer(writeBuffer)
-		}
-	}
-	if c, ok := s.Conn.(ifaceSetNoDelay); ok {
-		if !noDelay {
-			c.SetNoDelay(noDelay)
-		}
-	}
+func (s *socket) initOptimize() {
+	TryOptimize(s.Conn)
 }
 
 type (
@@ -343,6 +359,31 @@ type (
 		SetNoDelay(noDelay bool) error
 	}
 )
+
+// TryOptimize attempts to set KeepAlive, KeepAlivePeriod, ReadBuffer, WriteBuffer or NoDelay.
+func TryOptimize(conn net.Conn) {
+	if c, ok := conn.(ifaceSetKeepAlive); ok {
+		if changeKeepAlive {
+			c.SetKeepAlive(keepAlive)
+		}
+		if keepAlivePeriod >= 0 && keepAlive {
+			c.SetKeepAlivePeriod(keepAlivePeriod)
+		}
+	}
+	if c, ok := conn.(ifaceSetBuffer); ok {
+		if readBuffer >= 0 {
+			c.SetReadBuffer(readBuffer)
+		}
+		if writeBuffer >= 0 {
+			c.SetWriteBuffer(writeBuffer)
+		}
+	}
+	if c, ok := conn.(ifaceSetNoDelay); ok {
+		if !noDelay {
+			c.SetNoDelay(noDelay)
+		}
+	}
+}
 
 // Connection related system configuration
 var (

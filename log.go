@@ -1,4 +1,4 @@
-// Copyright 2015-2018 HenryLee. All Rights Reserved.
+// Copyright 2015-2019 HenryLee. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tp
+package erpc
 
 import (
 	"fmt"
@@ -25,9 +25,9 @@ import (
 
 	"github.com/henrylee2cn/goutil/graceful"
 
+	"github.com/henrylee2cn/erpc/v6/utils"
+	"github.com/henrylee2cn/erpc/v6/utils/color"
 	"github.com/henrylee2cn/goutil"
-	"github.com/henrylee2cn/teleport/utils"
-	"github.com/henrylee2cn/teleport/utils/color"
 )
 
 type (
@@ -159,7 +159,7 @@ var loggerOutputter = func() LoggerOutputter {
 			buf.WriteString(" [" + loggerLevelTagMap[loggerLevel] + "] ")
 			buf.Write(msgBytes)
 			line := goutil.GetCallLine(calldepth + 1)
-			if !strings.Contains(line, "github.com/henrylee2cn/teleport") &&
+			if !strings.Contains(line, "github.com/henrylee2cn/erpc") &&
 				!strings.Contains(line, "github.com/henrylee2cn/goutil/graceful") {
 				buf.WriteString(" <" + line + ">\n")
 			} else {
@@ -179,31 +179,39 @@ var loggerOutputter = func() LoggerOutputter {
 	}
 }()
 
+// FlushLogger writes any buffered log to the underlying io.Writer.
+func FlushLogger() error {
+	return loggerOutputter.Flush()
+}
+
 // SetLoggerOutputter sets logger outputter.
 // NOTE: Concurrent is not safe!
-func SetLoggerOutputter(outputter LoggerOutputter) {
+func SetLoggerOutputter(outputter LoggerOutputter) (flusher func() error) {
 	loggerOutputter = outputter
+	return FlushLogger
 }
 
 // SetLoggerLevel sets the logger's level by string.
-func SetLoggerLevel(level string) {
+func SetLoggerLevel(level string) (flusher func() error) {
 	for k, v := range loggerLevelMap {
 		if v == level {
 			loggerLevel = k
-			return
+			return FlushLogger
 		}
 	}
 	log.Printf("Unknown level string: %s", level)
+	return FlushLogger
 }
 
 // SetLoggerLevel2 sets the logger's level by number.
-func SetLoggerLevel2(level LoggerLevel) {
+func SetLoggerLevel2(level LoggerLevel) (flusher func() error) {
 	_, ok := loggerLevelMap[level]
 	if !ok {
 		log.Printf("Unknown level number: %d", level)
-		return
+		return FlushLogger
 	}
 	loggerLevel = level
+	return FlushLogger
 }
 
 // GetLoggerLevel gets the logger's level.
@@ -222,11 +230,6 @@ func EnableLoggerLevel(level LoggerLevel) bool {
 // GetLogger returns the global logger object.
 func GetLogger() Logger {
 	return logger
-}
-
-// FlushLogger writes any buffered log to the underlying io.Writer.
-func FlushLogger() error {
-	return loggerOutputter.Flush()
 }
 
 func loggerOutput(loggerLevel LoggerLevel, format string, a ...interface{}) {

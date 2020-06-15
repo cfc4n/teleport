@@ -22,8 +22,8 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/henrylee2cn/erpc/v6/utils"
 	"github.com/henrylee2cn/goutil"
-	"github.com/henrylee2cn/teleport/utils"
 )
 
 type (
@@ -66,15 +66,17 @@ func SetDefaultProtoFunc(protoFunc ProtoFunc) {
 # raw protocol format(Big Endian):
 
 {4 bytes message length}
-{1 byte protocol version}
+{1 byte protocol version} # 6
 {1 byte transfer pipe length}
 {transfer pipe IDs}
 # The following is handled data by transfer pipe
 {1 bytes sequence length}
-{sequence}
+{sequence (HEX 36 string of int32)}
 {1 byte message type} # e.g. CALL:1; REPLY:2; PUSH:3
 {1 bytes service method length}
 {service method}
+{2 bytes status length}
+{status(urlencoded)}
 {2 bytes metadata length}
 {metadata(urlencoded)}
 {1 byte body codec id}
@@ -83,18 +85,18 @@ func SetDefaultProtoFunc(protoFunc ProtoFunc) {
 
 // rawProto fast socket communication protocol.
 type rawProto struct {
-	id   byte
-	name string
 	r    io.Reader
 	w    io.Writer
 	rMu  sync.Mutex
+	name string
+	id   byte
 }
 
 // RawProtoFunc is creation function of fast socket protocol.
 // NOTE: it is the default protocol.
 var RawProtoFunc = func(rw IOWithReadBuffer) Proto {
 	return &rawProto{
-		id:   'r',
+		id:   6,
 		name: "raw",
 		r:    rw,
 		w:    rw,
@@ -172,6 +174,9 @@ func (r *rawProto) writeHeader(bb *utils.ByteBuffer, m Message) error {
 	}
 	bb.WriteByte(byte(serviceMethodLength))
 	bb.Write(serviceMethod)
+	statusBytes := m.Status(true).EncodeQuery()
+	binary.Write(bb, binary.BigEndian, uint16(len(statusBytes)))
+	bb.Write(statusBytes)
 
 	metaBytes := m.Meta().QueryString()
 	binary.Write(bb, binary.BigEndian, uint16(len(metaBytes)))
@@ -217,12 +222,14 @@ func (r *rawProto) Unpack(m Message) error {
 func (r *rawProto) readMessage(bb *utils.ByteBuffer, m Message) error {
 	r.rMu.Lock()
 	defer r.rMu.Unlock()
+
 	// size
-	var lastSize uint32
-	err := binary.Read(r.r, binary.BigEndian, &lastSize)
+	bb.ChangeLen(4)
+	_, err := io.ReadFull(r.r, bb.B)
 	if err != nil {
 		return err
 	}
+	lastSize := binary.BigEndian.Uint32(bb.B)
 	if err = m.SetSize(lastSize); err != nil {
 		return err
 	}
@@ -274,11 +281,18 @@ func (r *rawProto) readHeader(data []byte, m Message) ([]byte, error) {
 	m.SetServiceMethod(string(data[:serviceMethodLen]))
 	data = data[serviceMethodLen:]
 
+	// status
+	statusLen := binary.BigEndian.Uint16(data)
+	data = data[2:]
+	m.Status(true).DecodeQuery(data[:statusLen])
+	data = data[statusLen:]
+
 	// meta
 	metaLen := binary.BigEndian.Uint16(data)
 	data = data[2:]
 	m.Meta().ParseBytes(data[:metaLen])
 	data = data[metaLen:]
+
 	return data, nil
 }
 

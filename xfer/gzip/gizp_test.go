@@ -3,8 +3,8 @@ package gzip_test
 import (
 	"testing"
 
-	"github.com/henrylee2cn/teleport/xfer"
-	"github.com/henrylee2cn/teleport/xfer/gzip"
+	"github.com/henrylee2cn/erpc/v6/xfer"
+	"github.com/henrylee2cn/erpc/v6/xfer/gzip"
 )
 
 func TestGzip(t *testing.T) {
@@ -22,15 +22,17 @@ func TestGzip(t *testing.T) {
 	t.Logf("transfer filter: ids:%v, names:%v", xferPipe.IDs(), xferPipe.Names())
 
 	// test logic
-	b, err := xferPipe.OnPack([]byte("src"))
-	if err != nil {
-		t.Fatalf("nopack: %v", err)
-	}
-	src, err := xferPipe.OnUnpack(b)
-	if err != nil {
-		t.Fatalf("nounpack: %v", err)
-	}
-	if string(src) != "src" {
-		t.Fatalf("gunzip has error: want \"src\", have %q", string(src))
+	for i := 0; i < 1000; i++ {
+		b, err := xferPipe.OnPack([]byte("src"))
+		if err != nil {
+			t.Fatalf("nopack: %v", err)
+		}
+		src, err := xferPipe.OnUnpack(b)
+		if err != nil {
+			t.Fatalf("nounpack: %v", err)
+		}
+		if string(src) != "src" {
+			t.Fatalf("gunzip has error: want \"src\", have %q", string(src))
+		}
 	}
 }

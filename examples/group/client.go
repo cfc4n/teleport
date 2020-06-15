@@ -1,45 +1,44 @@
 package main
 
 import (
-	tp "github.com/henrylee2cn/teleport"
+	"github.com/henrylee2cn/erpc/v6"
 )
 
 //go:generate go build $GOFILE
 
 func main() {
-	defer tp.FlushLogger()
-	tp.SetLoggerLevel("ERROR")
+	defer erpc.SetLoggerLevel("ERROR")()
 
-	cli := tp.NewPeer(
-		tp.PeerConfig{},
+	cli := erpc.NewPeer(
+		erpc.PeerConfig{},
 	)
 	defer cli.Close()
 	group := cli.SubRoute("/cli")
 	group.RoutePush(new(push))
 
-	sess, err := cli.Dial(":9090")
-	if err != nil {
-		tp.Fatalf("%v", err)
+	sess, stat := cli.Dial(":9090")
+	if !stat.OK() {
+		erpc.Fatalf("%v", stat)
 	}
 
 	var result int
-	rerr := sess.Call("/srv/math/v2/add_2",
+	stat = sess.Call("/srv/math/v2/add_2",
 		[]int{1, 2, 3, 4, 5},
 		&result,
-		tp.WithSetMeta("push_status", "yes"),
-	).Rerror()
+		erpc.WithSetMeta("push_status", "yes"),
+	).Status()
 
-	if rerr != nil {
-		tp.Fatalf("%v", err)
+	if !stat.OK() {
+		erpc.Fatalf("%v", stat)
 	}
-	tp.Printf("result: %d", result)
+	erpc.Printf("result: %d", result)
 }
 
 type push struct {
-	tp.PushCtx
+	erpc.PushCtx
 }
 
-func (p *push) ServerStatus(arg *string) *tp.Rerror {
-	tp.Printf("server status: %s", *arg)
+func (p *push) ServerStatus(arg *string) *erpc.Status {
+	erpc.Printf("server status: %s", *arg)
 	return nil
 }

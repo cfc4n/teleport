@@ -3,43 +3,42 @@ package main
 import (
 	"fmt"
 
-	tp "github.com/henrylee2cn/teleport"
-	"github.com/henrylee2cn/teleport/socket"
+	"github.com/henrylee2cn/erpc/v6"
+	"github.com/henrylee2cn/erpc/v6/socket"
 )
 
 //go:generate go build $GOFILE
 
 func main() {
-	defer tp.FlushLogger()
-	tp.SetLoggerLevel("ERROR")
+	defer erpc.SetLoggerLevel("ERROR")()
 
-	cli := tp.NewPeer(
-		tp.PeerConfig{},
+	cli := erpc.NewPeer(
+		erpc.PeerConfig{},
 	)
 	defer cli.Close()
 
-	sess, err := cli.Dial(":8080")
-	if err != nil {
-		tp.Fatalf("%v", err)
+	sess, stat := cli.Dial(":8080")
+	if !stat.OK() {
+		erpc.Fatalf("%v", stat)
 	}
 
 	var result int
-	rerr := sess.Call("/math/add",
+	stat = sess.Call("/math/add",
 		[]int{1, 2, 3, 4, 5},
 		&result,
-	).Rerror()
+	).Status()
 
-	if rerr != nil {
-		tp.Fatalf("%v", rerr)
+	if !stat.OK() {
+		erpc.Fatalf("%v", stat)
 	}
-	tp.Printf("result: %d", result)
+	erpc.Printf("result: %d", result)
 
-	rerr = sess.Push(
+	stat = sess.Push(
 		"/chat/say",
 		fmt.Sprintf("I get result %d", result),
 		socket.WithSetMeta("X-ID", "client-001"),
 	)
-	if rerr != nil {
-		tp.Fatalf("%v", rerr)
+	if !stat.OK() {
+		erpc.Fatalf("%v", stat)
 	}
 }

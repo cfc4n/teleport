@@ -19,22 +19,22 @@ package jsonproto
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"io"
+	"strconv"
 	"sync"
 
 	"github.com/tidwall/gjson"
 
+	"github.com/henrylee2cn/erpc/v6"
+	"github.com/henrylee2cn/erpc/v6/utils"
 	"github.com/henrylee2cn/goutil"
-	tp "github.com/henrylee2cn/teleport"
-	"github.com/henrylee2cn/teleport/utils"
 )
 
 // NewJSONProtoFunc is creation function of JSON socket protocol.
 //  Message data format: {length bytes}{xfer_pipe length byte}{xfer_pipe bytes}{JSON bytes}
 //  Message data demo: `830{"seq":%q,"mtype":%d,"serviceMethod":%q,"meta":%q,"bodyCodec":%d,"body":"%s"}`
-func NewJSONProtoFunc() tp.ProtoFunc {
-	return func(rw tp.IOWithReadBuffer) tp.Proto {
+func NewJSONProtoFunc() erpc.ProtoFunc {
+	return func(rw erpc.IOWithReadBuffer) erpc.Proto {
 		return &jsonproto{
 			id:   'j',
 			name: "json",
@@ -44,10 +44,10 @@ func NewJSONProtoFunc() tp.ProtoFunc {
 }
 
 type jsonproto struct {
-	id   byte
-	name string
-	rw   tp.IOWithReadBuffer
+	rw   erpc.IOWithReadBuffer
 	rMu  sync.Mutex
+	name string
+	id   byte
 }
 
 // Version returns the protocol's id and name.
@@ -55,11 +55,22 @@ func (j *jsonproto) Version() (byte, string) {
 	return j.id, j.name
 }
 
-const format = `{"seq":%d,"mtype":%d,"serviceMethod":%q,"meta":%q,"bodyCodec":%d,"body":"%s"}`
+// const format = `{"seq":%d,"mtype":%d,"serviceMethod":%q,"status":%q,"meta":%q,"bodyCodec":%d,"body":"%s"}`
+
+var (
+	msg1 = []byte(`{"seq":`)
+	msg2 = []byte(`,"mtype":`)
+	msg3 = []byte(`,"serviceMethod":`)
+	msg4 = []byte(`,"status":`)
+	msg5 = []byte(`,"meta":`)
+	msg6 = []byte(`,"bodyCodec":`)
+	msg7 = []byte(`,"body":"`)
+	msg8 = []byte(`"}`)
+)
 
 // Pack writes the Message into the connection.
 // NOTE: Make sure to write only once or there will be package contamination!
-func (j *jsonproto) Pack(m tp.Message) error {
+func (j *jsonproto) Pack(m erpc.Message) error {
 	// marshal body
 	bodyBytes, err := m.MarshalBody()
 	if err != nil {
@@ -67,17 +78,26 @@ func (j *jsonproto) Pack(m tp.Message) error {
 	}
 
 	// marshal whole
-	var s = fmt.Sprintf(format,
-		m.Seq(),
-		m.Mtype(),
-		m.ServiceMethod(),
-		m.Meta().QueryString(),
-		m.BodyCodec(),
-		bytes.Replace(bodyBytes, []byte{'"'}, []byte{'\\', '"'}, -1),
-	)
+	bb := utils.AcquireByteBuffer()
+	defer utils.ReleaseByteBuffer(bb)
+	bb.Write(msg1)
+	bb.WriteString(strconv.FormatInt(int64(m.Seq()), 10))
+	bb.Write(msg2)
+	bb.WriteString(strconv.FormatInt(int64(m.Mtype()), 10))
+	bb.Write(msg3)
+	bb.WriteString(strconv.Quote(m.ServiceMethod()))
+	bb.Write(msg4)
+	bb.WriteString(strconv.Quote(m.Status(true).QueryString()))
+	bb.Write(msg5)
+	bb.WriteString(strconv.Quote(goutil.BytesToString(m.Meta().QueryString())))
+	bb.Write(msg6)
+	bb.WriteString(strconv.FormatInt(int64(m.BodyCodec()), 10))
+	bb.Write(msg7)
+	bb.Write(bytes.Replace(bodyBytes, []byte{'"'}, []byte{'\\', '"'}, -1))
+	bb.Write(msg8)
 
 	// do transfer pipe
-	b, err := m.XferPipe().OnPack(goutil.StringToBytes(s))
+	b, err := m.XferPipe().OnPack(bb.B)
 	if err != nil {
 		return err
 	}
@@ -97,8 +117,7 @@ func (j *jsonproto) Pack(m tp.Message) error {
 }
 
 // Unpack reads bytes from the connection to the Message.
-// NOTE: Concurrent unsafe!
-func (j *jsonproto) Unpack(m tp.Message) error {
+func (j *jsonproto) Unpack(m erpc.Message) error {
 	j.rMu.Lock()
 	defer j.rMu.Unlock()
 	var size uint32
@@ -142,6 +161,8 @@ func (j *jsonproto) Unpack(m tp.Message) error {
 	m.SetSeq(int32(gjson.Get(s, "seq").Int()))
 	m.SetMtype(byte(gjson.Get(s, "mtype").Int()))
 	m.SetServiceMethod(gjson.Get(s, "serviceMethod").String())
+	stat := gjson.Get(s, "status").String()
+	m.Status(true).DecodeQuery(goutil.StringToBytes(stat))
 	meta := gjson.Get(s, "meta").String()
 	m.Meta().ParseBytes(goutil.StringToBytes(meta))
 

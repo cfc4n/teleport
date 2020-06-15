@@ -2,34 +2,34 @@ package main
 
 import (
 	"github.com/henrylee2cn/cfgo"
-	tp "github.com/henrylee2cn/teleport"
+	"github.com/henrylee2cn/erpc/v6"
 )
 
 //go:generate go build $GOFILE
 
 func main() {
-	defer tp.FlushLogger()
-	cfg := tp.PeerConfig{}
+	defer erpc.FlushLogger()
+	cfg := erpc.PeerConfig{}
 
 	// auto create and sync config/config.yaml
 	cfgo.MustGet("config/config.yaml", true).MustReg("cfg_cli", &cfg)
 
-	cli := tp.NewPeer(cfg)
+	cli := erpc.NewPeer(cfg)
 	defer cli.Close()
 
-	sess, err := cli.Dial(":9090")
-	if err != nil {
-		tp.Fatalf("%v", err)
+	sess, stat := cli.Dial(":9090")
+	if !stat.OK() {
+		erpc.Fatalf("%v", stat)
 	}
 
 	var result int
-	rerr := sess.Call("/math/add",
+	stat = sess.Call("/math/add",
 		[]int{1, 2, 3, 4, 5},
 		&result,
-	).Rerror()
+	).Status()
 
-	if rerr != nil {
-		tp.Fatalf("%v", rerr)
+	if !stat.OK() {
+		erpc.Fatalf("%v", stat)
 	}
-	tp.Printf("result: 1+2+3+4+5 = %d", result)
+	erpc.Printf("result: 1+2+3+4+5 = %d", result)
 }

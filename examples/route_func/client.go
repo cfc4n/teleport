@@ -1,58 +1,57 @@
 package main
 
 import (
-	tp "github.com/henrylee2cn/teleport"
+	"github.com/henrylee2cn/erpc/v6"
 )
 
 //go:generate go build $GOFILE
 
 func main() {
-	defer tp.FlushLogger()
-	tp.SetLoggerLevel("ERROR")
+	defer erpc.SetLoggerLevel("ERROR")()
 
-	cli := tp.NewPeer(tp.PeerConfig{})
+	cli := erpc.NewPeer(erpc.PeerConfig{})
 	defer cli.Close()
 
 	cli.RoutePushFunc((*ctrl).ServerStatus1)
 	cli.RoutePushFunc(ServerStatus2)
 
-	sess, err := cli.Dial(":9090")
-	if err != nil {
-		tp.Fatalf("%v", err)
+	sess, stat := cli.Dial(":9090")
+	if !stat.OK() {
+		erpc.Fatalf("%v", stat)
 	}
 
 	var result int
-	rerr := sess.Call("/math/add1",
+	stat = sess.Call("/math/add1",
 		[]int{1, 2, 3, 4, 5},
 		&result,
-	).Rerror()
+	).Status()
 
-	if rerr != nil {
-		tp.Fatalf("%v", rerr)
+	if !stat.OK() {
+		erpc.Fatalf("%v", stat)
 	}
-	tp.Printf("result1: %d", result)
+	erpc.Printf("result1: %d", result)
 
-	rerr = sess.Call("/math/add2",
+	stat = sess.Call("/math/add2",
 		[]int{1, 2, 3, 4, 5},
 		&result,
-		tp.WithAddMeta("push_status", "yes"),
-	).Rerror()
+		erpc.WithAddMeta("push_status", "yes"),
+	).Status()
 
-	if rerr != nil {
-		tp.Fatalf("%v", rerr)
+	if !stat.OK() {
+		erpc.Fatalf("%v", stat)
 	}
-	tp.Printf("result2: %d", result)
+	erpc.Printf("result2: %d", result)
 }
 
 type ctrl struct {
-	tp.PushCtx
+	erpc.PushCtx
 }
 
-func (c *ctrl) ServerStatus1(arg *string) *tp.Rerror {
+func (c *ctrl) ServerStatus1(arg *string) *erpc.Status {
 	return ServerStatus2(c, arg)
 }
 
-func ServerStatus2(ctx tp.PushCtx, arg *string) *tp.Rerror {
-	tp.Printf("server status(%s): %s", ctx.ServiceMethod(), *arg)
+func ServerStatus2(ctx erpc.PushCtx, arg *string) *erpc.Status {
+	erpc.Printf("server status(%s): %s", ctx.ServiceMethod(), *arg)
 	return nil
 }

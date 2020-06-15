@@ -1,4 +1,4 @@
-// Copyright 2015-2018 HenryLee. All Rights Reserved.
+// Copyright 2015-2019 HenryLee. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tp
+package erpc
 
 import (
-	"crypto/tls"
 	"encoding/json"
-	"net"
 	"os"
 	"sync"
 	"time"
 
+	"github.com/henrylee2cn/erpc/v6/quic"
 	"github.com/henrylee2cn/goutil"
 	"github.com/henrylee2cn/goutil/errors"
 	"github.com/henrylee2cn/goutil/graceful"
@@ -107,7 +106,7 @@ func SetShutdown(timeout time.Duration, firstSweep, beforeExiting func() error) 
 	}
 	FirstSweep = func() error {
 		setParentLaddrList()
-		return errors.Merge(firstSweep(), inherit_net.SetInherited())
+		return errors.Merge(firstSweep(), inherit_net.SetInherited(), quic.SetInherited())
 	}
 	BeforeExiting = func() error {
 		return errors.Merge(shutdown(), beforeExiting())
@@ -127,31 +126,9 @@ func Reboot(timeout ...time.Duration) {
 	graceful.Reboot(timeout...)
 }
 
-// NewInheritListener creates a new listener that can be inherited on reboot.
-func NewInheritListener(network, laddr string, tlsConfig *tls.Config) (net.Listener, error) {
-	host, port, err := net.SplitHostPort(laddr)
-	if err != nil {
-		return nil, err
-	}
-	if port == "0" {
-		laddr = popParentLaddr(network, host, laddr)
-	}
-	lis, err := inherit_net.Listen(network, laddr)
-	if err != nil {
-		return nil, err
-	}
-	if tlsConfig != nil {
-		if len(tlsConfig.Certificates) == 0 && tlsConfig.GetCertificate == nil {
-			return nil, errors.New("tls: neither Certificates nor GetCertificate set in Config")
-		}
-		lis = tls.NewListener(lis, tlsConfig)
-	}
-	return lis, nil
-}
-
 const parentLaddrsKey = "LISTEN_PARENT_ADDRS"
 
-var parentAddrList map[string]map[string][]string // network:host:[host:port]
+var parentAddrList = make(map[string]map[string][]string, 2) // network:host:[host:port]
 var parentAddrListMutex sync.Mutex
 
 func initParentLaddrList() {
@@ -160,25 +137,22 @@ func initParentLaddrList() {
 }
 
 func setParentLaddrList() {
-	var parentAddrList = make(map[string]map[string][]string)
-	peers.rwmu.RLock()
-	for p := range peers.list {
-		for lis := range p.listeners {
-			addr := lis.Addr()
-			m, ok := parentAddrList[addr.Network()]
-			if !ok {
-				m = make(map[string][]string)
-				parentAddrList[addr.Network()] = m
-			}
-			host, _, _ := net.SplitHostPort(addr.String())
-			m[host] = append(m[host], addr.String())
-		}
-	}
-	peers.rwmu.RUnlock()
 	b, _ := json.Marshal(parentAddrList)
 	graceful.AddInherited(nil, []*graceful.Env{
 		{K: parentLaddrsKey, V: goutil.BytesToString(b)},
 	})
+}
+
+func pushParentLaddr(network, host, addr string) {
+	parentAddrListMutex.Lock()
+	defer parentAddrListMutex.Unlock()
+	unifyLocalhost(&host)
+	m, ok := parentAddrList[network]
+	if !ok {
+		m = make(map[string][]string)
+		parentAddrList[network] = m
+	}
+	m[host] = append(m[host], addr)
 }
 
 func popParentLaddr(network, host, laddr string) string {
